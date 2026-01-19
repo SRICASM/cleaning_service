@@ -1,34 +1,160 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* App-specific styles */
+.hero-gradient {
+    background: linear-gradient(135deg, #f0fdf4 0%, #fafaf9 50%, #f5f5f4 100%);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
+.service-card {
+    @apply relative overflow-hidden rounded-3xl bg-white p-8 border border-stone-100 transition-all duration-300;
+    box-shadow: 0 8px 30px rgb(0 0 0 / 0.04);
+}
+
+.service-card:hover {
+    @apply shadow-lg;
+    transform: translateY(-4px);
+}
+
+.cta-gradient {
+    background: linear-gradient(135deg, #14532d 0%, #166534 100%);
+}
+
+/* Navigation styles */
+.nav-link {
+    @apply relative text-stone-600 hover:text-green-900 transition-colors duration-200;
+}
+
+.nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background-color: #14532d;
+    transition: width 0.3s ease;
+}
+
+.nav-link:hover::after {
+    width: 100%;
+}
+
+/* Form styles */
+.form-input {
+    @apply h-12 rounded-lg border-stone-200 bg-white focus:ring-2 focus:ring-green-900/20 focus:border-green-900 transition-all;
+}
+
+/* Step indicator */
+.step-indicator {
+    @apply flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300;
+}
+
+.step-indicator.active {
+    @apply bg-green-900 border-green-900 text-white;
+}
+
+.step-indicator.completed {
+    @apply bg-lime-500 border-lime-500 text-white;
+}
+
+.step-indicator.inactive {
+    @apply bg-white border-stone-300 text-stone-400;
+}
+
+/* Selection card for booking */
+.selection-card {
+    @apply relative p-6 rounded-2xl border-2 border-stone-200 cursor-pointer transition-all duration-200;
+}
+
+.selection-card:hover {
+    @apply border-green-900/30 bg-green-50/30;
+}
+
+.selection-card.selected {
+    @apply border-green-900 bg-green-50;
+}
+
+/* Admin sidebar */
+.admin-sidebar {
+    @apply fixed left-0 top-0 h-full w-64 bg-green-900 text-white;
+}
+
+.admin-nav-item {
+    @apply flex items-center gap-3 px-4 py-3 text-green-100 hover:bg-green-800 rounded-lg transition-colors;
+}
+
+.admin-nav-item.active {
+    @apply bg-green-800 text-white;
+}
+
+/* Stats card */
+.stats-card {
+    @apply p-6 rounded-2xl bg-white border border-stone-100;
+    box-shadow: 0 4px 20px rgb(0 0 0 / 0.03);
+}
+
+/* Table styles */
+.data-table {
+    @apply w-full text-sm;
+}
+
+.data-table th {
+    @apply px-4 py-3 text-left font-medium text-stone-500 bg-stone-50 border-b border-stone-200;
+}
+
+.data-table td {
+    @apply px-4 py-4 border-b border-stone-100;
+}
+
+.data-table tr:hover td {
+    @apply bg-stone-50;
+}
+
+/* Badge styles */
+.badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+}
+
+.badge-pending {
+    @apply bg-amber-100 text-amber-700;
+}
+
+.badge-confirmed {
+    @apply bg-blue-100 text-blue-700;
+}
+
+.badge-in_progress {
+    @apply bg-purple-100 text-purple-700;
+}
+
+.badge-completed {
+    @apply bg-green-100 text-green-700;
+}
+
+.badge-cancelled {
+    @apply bg-red-100 text-red-700;
+}
+
+.badge-paid {
+    @apply bg-green-100 text-green-700;
+}
+
+/* Testimonial card */
+.testimonial-card {
+    @apply p-8 rounded-3xl bg-white border border-stone-100;
+    box-shadow: 0 8px 30px rgb(0 0 0 / 0.04);
+}
+
+/* Feature card */
+.feature-card {
+    @apply p-8 rounded-2xl bg-stone-50 border border-stone-100 hover:bg-white transition-colors duration-300;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .service-card {
+        @apply p-6;
     }
-}
-
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
-}
-
-.App-link {
-    color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
+    
+    .testimonial-card {
+        @apply p-6;
     }
 }
