@@ -71,8 +71,42 @@ Build a modern, high-converting cleaning services website inspired by smoothclea
 - [ ] Multi-language support
 - [ ] Referral program
 
+## SQL Backend Architecture (January 2025)
+
+### New Backend Structure Added:
+```
+/app/backend/
+├── app/
+│   ├── config.py              # Environment configuration
+│   ├── database.py            # SQLAlchemy engine & session
+│   ├── models/                # SQLAlchemy ORM models (15 tables)
+│   ├── schemas/               # Pydantic request/response models
+│   ├── api/                   # RESTful API routes
+│   │   ├── auth.py            # Authentication endpoints
+│   │   ├── users.py           # User management
+│   │   ├── services.py        # Service catalog
+│   │   ├── bookings.py        # Booking lifecycle
+│   │   ├── payments.py        # Stripe integration
+│   │   ├── reviews.py         # Rating system
+│   │   └── contact.py         # Contact form
+│   └── core/                  # Security, exceptions
+├── database_schema.sql        # PostgreSQL DDL
+├── API_DOCUMENTATION.md       # Complete API reference
+├── ARCHITECTURE.md            # System design
+└── ROADMAP.md                 # Development phases
+```
+
+### Database Tables (PostgreSQL):
+- users, addresses, refresh_tokens
+- service_categories, services, add_ons
+- bookings, booking_add_ons, booking_status_history
+- payments, refunds, invoices, discount_codes
+- reviews, contact_messages
+- audit_logs, notifications, time_slots
+
 ## Next Tasks
-1. Add email confirmation for bookings
-2. Implement recurring subscription plans
-3. Add customer reviews/ratings
-4. Build cleaner assignment system
+1. Set up PostgreSQL and run migrations
+2. Add email notifications (SendGrid integration)
+3. Implement recurring subscription plans
+4. Add cleaner mobile app APIs
+5. Build real-time tracking (WebSocket)
