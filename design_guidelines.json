@@ -1,0 +1,173 @@
+{
+  "design_system": {
+    "theme": "light",
+    "typography": {
+      "font_family": {
+        "heading": "Outfit, sans-serif",
+        "body": "DM Sans, sans-serif",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "scale": {
+        "h1": "text-5xl md:text-7xl font-bold tracking-tight",
+        "h2": "text-4xl md:text-5xl font-semibold tracking-tight",
+        "h3": "text-2xl md:text-3xl font-medium",
+        "body": "text-base md:text-lg leading-relaxed",
+        "caption": "text-sm font-medium tracking-wide uppercase text-muted-foreground"
+      }
+    },
+    "colors": {
+      "palette": {
+        "primary": {
+          "name": "Deep Forest",
+          "hex": "#14532d",
+          "tailwind": "bg-green-900 text-white",
+          "description": "Used for primary headings, strong brand presence, and trust."
+        },
+        "secondary": {
+          "name": "Stone White",
+          "hex": "#fafaf9",
+          "tailwind": "bg-stone-50 text-stone-900",
+          "description": "Main background color. Warm and organic, not sterile."
+        },
+        "accent": {
+          "name": "Zesty Lime",
+          "hex": "#84cc16",
+          "tailwind": "bg-lime-500 text-white hover:bg-lime-600",
+          "description": "Primary CTA color. High energy, freshness."
+        },
+        "muted": {
+          "name": "Warm Grey",
+          "hex": "#e7e5e4",
+          "tailwind": "bg-stone-200 text-stone-600",
+          "description": "For borders, dividers, and secondary backgrounds."
+        }
+      },
+      "css_vars": {
+        "background": "60 9.1% 97.8%",
+        "foreground": "24 9.8% 10%",
+        "card": "0 0% 100%",
+        "card-foreground": "24 9.8% 10%",
+        "popover": "0 0% 100%",
+        "popover-foreground": "24 9.8% 10%",
+        "primary": "142.1 76.2% 36.3%",
+        "primary-foreground": "355.7 100% 97.3%",
+        "secondary": "60 4.8% 95.9%",
+        "secondary-foreground": "24 9.8% 10%",
+        "muted": "60 4.8% 95.9%",
+        "muted-foreground": "25 5.3% 44.7%",
+        "accent": "60 4.8% 95.9%",
+        "accent-foreground": "24 9.8% 10%",
+        "destructive": "0 84.2% 60.2%",
+        "destructive-foreground": "60 9.1% 97.8%",
+        "border": "20 5.9% 90%",
+        "input": "20 5.9% 90%",
+        "ring": "142.1 76.2% 36.3%",
+        "radius": "0.75rem"
+      }
+    },
+    "spacing": {
+      "container_padding": "px-6 md:px-12 lg:px-24",
+      "section_gap": "py-20 md:py-32",
+      "element_gap": "gap-6 md:gap-12"
+    },
+    "visual_enhancers": {
+      "glassmorphism": "bg-white/70 backdrop-blur-xl border border-white/20 shadow-sm",
+      "shadows": {
+        "soft": "shadow-[0_8px_30px_rgb(0,0,0,0.04)]",
+        "hard": "shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+      },
+      "borders": "border border-stone-200 rounded-xl",
+      "gradients": "bg-gradient-to-br from-stone-50 to-stone-100"
+    }
+  },
+  "layout_strategies": {
+    "marketing": {
+      "grid_type": "Mode A: Tetris Grid",
+      "rules": [
+        "Use asymmetric grid layouts (grid-cols-12).",
+        "Never center text by default; use left alignment for readability.",
+        "Use massive whitespace (py-32) between sections."
+      ]
+    },
+    "dashboard": {
+      "grid_type": "Mode B: High Density",
+      "rules": [
+        "Use dense grids (gap-4).",
+        "Cards must stretch to fill height (h-full).",
+        "Use sidebar navigation for admin/user dashboards."
+      ]
+    },
+    "booking_flow": {
+      "type": "Focused Wizard",
+      "rules": [
+        "Remove main navigation to prevent exit.",
+        "Show clear progress bar.",
+        "Use large, clickable cards for selection (Radio Group style)."
+      ]
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-8 rounded-full font-medium transition-all hover:scale-105 active:scale-95",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80 h-12 px-8 rounded-full font-medium",
+      "outline": "border-2 border-primary text-primary hover:bg-primary hover:text-white h-12 px-8 rounded-full font-medium"
+    },
+    "cards": {
+      "service": "group relative overflow-hidden rounded-3xl bg-white p-8 shadow-soft hover:shadow-lg transition-all border border-stone-100",
+      "feature": "bg-stone-50 p-8 rounded-2xl border border-stone-100 hover:bg-white transition-colors"
+    },
+    "inputs": {
+      "style": "h-12 rounded-lg border-stone-200 bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+    }
+  },
+  "assets": {
+    "images": {
+      "hero_bg": {
+        "url": "https://images.unsplash.com/photo-1758548157747-285c7012db5b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTB8MHwxfHNlYXJjaHwxfHxjbGVhbiUyMGJyaWdodCUyMGxpdmluZyUyMHJvb20lMjBzdW5saWdodHxlbnwwfHx8fDE3Njg4Mjg4MjV8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "Bright, sunlit minimalist living room",
+        "usage": "Hero section background or main visual"
+      },
+      "trust_cleaner": {
+        "url": "https://images.unsplash.com/photo-1713863574460-ccd3bbb47f1e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDN8MHwxfHNlYXJjaHwyfHxwcm9mZXNzaW9uYWwlMjBjbGVhbmVyJTIwaGFwcHklMjBwb3J0cmFpdHxlbnwwfHx8fDE3Njg4Mjg4Mjd8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "Smiling professional cleaner",
+        "usage": "About Us or Trust Signals section"
+      },
+      "services_flatlay": {
+        "url": "https://images.unsplash.com/photo-1660993431493-0ffd7635f700?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwxfHxjbGVhbmluZyUyMHRvb2xzJTIwYWVzdGhldGljJTIwZmxhdGxheXxlbnwwfHx8fDE3Njg4Mjg4Mjh8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "Aesthetic cleaning tools flatlay",
+        "usage": "Services overview or background texture"
+      },
+      "detail_shot": {
+        "url": "https://images.unsplash.com/photo-1765948079484-3bb1af6e5268?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTB8MHwxfHNlYXJjaHwyfHxjbGVhbiUyMGJyaWdodCUyMGxpdmluZyUyMHJvb20lMjBzdW5saWdodHxlbnwwfHx8fDE3Njg4Mjg4MjV8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "Sunlight on chair detail",
+        "usage": "Detail shots for 'Attention to Detail' section"
+      }
+    },
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke width 1.5px, rounded corners"
+    }
+  },
+  "motion": {
+    "library": "framer-motion",
+    "variants": {
+      "fadeInUp": {
+        "initial": { "opacity": 0, "y": 20 },
+        "animate": { "opacity": 1, "y": 0 },
+        "transition": { "duration": 0.5, "ease": "easeOut" }
+      },
+      "staggerContainer": {
+        "animate": { "transition": { "staggerChildren": 0.1 } }
+      }
+    }
+  },
+  "universal_guidelines": [
+    "Do not use generic 'medical blue' colors. Stick to the Forest/Lime/Stone palette.",
+    "Ensure all interactive elements have hover states (transform: scale(1.02) or color change).",
+    "Use 'sonner' for all toast notifications.",
+    "Booking flow must be broken into steps: Service -> Details -> Date -> Payment.",
+    "Admin dashboard must use a sidebar layout with a dense data grid.",
+    "All images must use the 'object-cover' class to prevent distortion.",
+    "Add 'data-testid' to all buttons, inputs, and links."
+  ]
+}
