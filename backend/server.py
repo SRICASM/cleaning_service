@@ -315,8 +315,8 @@ async def create_booking(booking_data: BookingCreate, user: dict = Depends(get_c
         "user_name": user["name"],
         **booking_data.model_dump(),
         "total_price": total_price,
-        "status": "pending",
-        "payment_status": "pending",
+        "status": "confirmed",  # PAYMENT BYPASS: Original was "pending"
+        "payment_status": "paid",  # PAYMENT BYPASS: Original was "pending"
         "payment_session_id": None,
         "created_at": now,
         "updated_at": now

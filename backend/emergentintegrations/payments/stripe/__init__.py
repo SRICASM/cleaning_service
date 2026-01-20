@@ -1,0 +1,1 @@
+# Mock Stripe checkout module

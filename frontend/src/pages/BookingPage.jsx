@@ -33,12 +33,12 @@ const BookingPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { getAuthHeaders } = useAuth();
-  
+
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [services, setServices] = useState([]);
   const [addOns, setAddOns] = useState([]);
-  
+
   // Booking data
   const [selectedService, setSelectedService] = useState(null);
   const [propertyType, setPropertyType] = useState('');
@@ -75,7 +75,7 @@ const BookingPage = () => {
         ]);
         setServices(servicesRes.data);
         setAddOns(addOnsRes.data);
-        
+
         const preselectedService = searchParams.get('service');
         if (preselectedService) {
           const service = servicesRes.data.find(s => s.id === preselectedService);
@@ -99,8 +99,8 @@ const BookingPage = () => {
   };
 
   const toggleAddOn = (addonId) => {
-    setSelectedAddOns(prev => 
-      prev.includes(addonId) 
+    setSelectedAddOns(prev =>
+      prev.includes(addonId)
         ? prev.filter(id => id !== addonId)
         : [...prev, addonId]
     );
@@ -165,16 +165,24 @@ const BookingPage = () => {
         headers: getAuthHeaders()
       });
 
-      // Create payment session
-      const paymentRes = await axios.post(`${API}/payments/checkout`, {
-        booking_id: bookingRes.data.id,
-        origin_url: window.location.origin
-      }, {
-        headers: getAuthHeaders()
-      });
+      // ============ PAYMENT BYPASS FOR TESTING ============
+      // Uncomment the code below to restore Stripe payment integration
+      // 
+      // // Create payment session
+      // const paymentRes = await axios.post(`${API}/payments/checkout`, {
+      //   booking_id: bookingRes.data.id,
+      //   origin_url: window.location.origin
+      // }, {
+      //   headers: getAuthHeaders()
+      // });
+      // 
+      // // Redirect to Stripe
+      // window.location.href = paymentRes.data.checkout_url;
+      // =====================================================
 
-      // Redirect to Stripe
-      window.location.href = paymentRes.data.checkout_url;
+      // Skip payment for testing - redirect directly to success page
+      toast.success('Booking confirmed!');
+      navigate(`/booking/success?session_id=test_${bookingRes.data.id}`);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to create booking');
       setLoading(false);
@@ -193,8 +201,8 @@ const BookingPage = () => {
       {/* Header */}
       <header className="bg-white border-b border-stone-200 py-4">
         <div className="max-w-4xl mx-auto px-6 flex items-center justify-between">
-          <button 
-            onClick={() => navigate(-1)} 
+          <button
+            onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-stone-600 hover:text-green-900"
             data-testid="booking-back"
           >
@@ -216,23 +224,20 @@ const BookingPage = () => {
             {steps.map((s, index) => (
               <div key={s.number} className="flex items-center">
                 <div className="flex flex-col items-center">
-                  <div 
-                    className={`step-indicator ${
-                      step > s.number ? 'completed' : step === s.number ? 'active' : 'inactive'
-                    }`}
+                  <div
+                    className={`step-indicator ${step > s.number ? 'completed' : step === s.number ? 'active' : 'inactive'
+                      }`}
                   >
                     {step > s.number ? <Check className="w-5 h-5" /> : s.number}
                   </div>
-                  <span className={`mt-2 text-sm font-medium ${
-                    step >= s.number ? 'text-green-900' : 'text-stone-400'
-                  }`}>
+                  <span className={`mt-2 text-sm font-medium ${step >= s.number ? 'text-green-900' : 'text-stone-400'
+                    }`}>
                     {s.title}
                   </span>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className={`w-16 md:w-32 h-0.5 mx-2 md:mx-4 ${
-                    step > s.number ? 'bg-lime-500' : 'bg-stone-200'
-                  }`} />
+                  <div className={`w-16 md:w-32 h-0.5 mx-2 md:mx-4 ${step > s.number ? 'bg-lime-500' : 'bg-stone-200'
+                    }`} />
                 )}
               </div>
             ))}
@@ -252,7 +257,7 @@ const BookingPage = () => {
               <p className="text-stone-600 mb-8">
                 Select the cleaning service that best fits your needs.
               </p>
-              
+
               <div className="grid md:grid-cols-2 gap-4">
                 {services.map((service) => (
                   <div
@@ -315,7 +320,7 @@ const BookingPage = () => {
                   <div>
                     <Label htmlFor="size">Property Size (sq ft)</Label>
                     <div className="flex items-center gap-3 mt-2">
-                      <button 
+                      <button
                         onClick={() => setPropertySize(Math.max(500, propertySize - 100))}
                         className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center hover:bg-stone-100"
                         data-testid="size-decrease"
@@ -330,7 +335,7 @@ const BookingPage = () => {
                         className="text-center"
                         data-testid="property-size"
                       />
-                      <button 
+                      <button
                         onClick={() => setPropertySize(propertySize + 100)}
                         className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center hover:bg-stone-100"
                         data-testid="size-increase"
@@ -342,7 +347,7 @@ const BookingPage = () => {
                   <div>
                     <Label htmlFor="bedrooms">Bedrooms</Label>
                     <div className="flex items-center gap-3 mt-2">
-                      <button 
+                      <button
                         onClick={() => setBedrooms(Math.max(0, bedrooms - 1))}
                         className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center hover:bg-stone-100"
                       >
@@ -356,7 +361,7 @@ const BookingPage = () => {
                         className="text-center"
                         data-testid="bedrooms"
                       />
-                      <button 
+                      <button
                         onClick={() => setBedrooms(bedrooms + 1)}
                         className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center hover:bg-stone-100"
                       >
@@ -367,7 +372,7 @@ const BookingPage = () => {
                   <div>
                     <Label htmlFor="bathrooms">Bathrooms</Label>
                     <div className="flex items-center gap-3 mt-2">
-                      <button 
+                      <button
                         onClick={() => setBathrooms(Math.max(1, bathrooms - 1))}
                         className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center hover:bg-stone-100"
                       >
@@ -381,7 +386,7 @@ const BookingPage = () => {
                         className="text-center"
                         data-testid="bathrooms"
                       />
-                      <button 
+                      <button
                         onClick={() => setBathrooms(bathrooms + 1)}
                         className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center hover:bg-stone-100"
                       >
@@ -467,11 +472,10 @@ const BookingPage = () => {
                       <button
                         key={time}
                         onClick={() => setSelectedTime(time)}
-                        className={`p-4 rounded-xl border-2 font-medium transition-all ${
-                          selectedTime === time
+                        className={`p-4 rounded-xl border-2 font-medium transition-all ${selectedTime === time
                             ? 'border-green-900 bg-green-50 text-green-900'
                             : 'border-stone-200 hover:border-green-900/30'
-                        }`}
+                          }`}
                         data-testid={`time-${time.replace(/\s/g, '-')}`}
                       >
                         <Clock className="w-4 h-4 inline-block mr-2" />
@@ -490,9 +494,8 @@ const BookingPage = () => {
                     <div
                       key={addon.id}
                       onClick={() => toggleAddOn(addon.id)}
-                      className={`selection-card flex items-center justify-between ${
-                        selectedAddOns.includes(addon.id) ? 'selected' : ''
-                      }`}
+                      className={`selection-card flex items-center justify-between ${selectedAddOns.includes(addon.id) ? 'selected' : ''
+                        }`}
                       data-testid={`addon-${addon.id}`}
                     >
                       <div>
@@ -501,11 +504,10 @@ const BookingPage = () => {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-semibold text-lime-600">+${addon.price}</span>
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                          selectedAddOns.includes(addon.id) 
-                            ? 'bg-green-900 border-green-900' 
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedAddOns.includes(addon.id)
+                            ? 'bg-green-900 border-green-900'
                             : 'border-stone-300'
-                        }`}>
+                          }`}>
                           {selectedAddOns.includes(addon.id) && (
                             <Check className="w-4 h-4 text-white" />
                           )}
@@ -627,7 +629,7 @@ const BookingPage = () => {
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
-            
+
             {step < 4 ? (
               <Button
                 onClick={nextStep}
