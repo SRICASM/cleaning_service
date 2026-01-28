@@ -1,9 +1,11 @@
+import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { 
-  Sparkles, 
-  Shield, 
-  Heart, 
+import { Button } from '../components/ui/button';
+import {
+  Sparkles,
+  Shield,
+  Heart,
   Award,
   Users,
   Target,
@@ -212,11 +214,15 @@ const AboutPage = () => {
           <p className="text-green-100/80 text-lg mb-8 max-w-2xl mx-auto">
             Join thousands of satisfied customers who trust CleanUpCrew for their cleaning needs.
           </p>
-          <a href="/booking">
-            <button className="bg-lime-500 hover:bg-lime-600 text-white px-10 py-4 rounded-full font-medium text-lg transition-all hover:scale-105" data-testid="about-cta">
+          <Link to="/booking">
+            <Button
+              size="lg"
+              className="bg-lime-500 hover:bg-lime-600 text-white px-10 py-4 rounded-full font-medium text-lg transition-all hover:scale-105"
+              data-testid="about-cta"
+            >
               Book Your First Clean
-            </button>
-          </a>
+            </Button>
+          </Link>
         </div>
       </section>
 

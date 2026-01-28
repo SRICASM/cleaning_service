@@ -4,8 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { PasswordInput } from '../components/ui/password-input';
 import { toast } from 'sonner';
-import { Sparkles, Mail, Lock, ArrowRight } from 'lucide-react';
+import { getErrorMessage } from '../utils/errorUtils';
+import { Sparkles, Mail, ArrowRight } from 'lucide-react';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -28,7 +30,7 @@ const LoginPage = () => {
       toast.success('Welcome back!');
       navigate(userData.role === 'admin' ? '/admin' : '/dashboard');
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Invalid credentials');
+      toast.error(getErrorMessage(error, 'Invalid credentials'));
     } finally {
       setLoading(false);
     }
@@ -73,15 +75,12 @@ const LoginPage = () => {
 
             <div>
               <Label htmlFor="password">Password</Label>
-              <div className="relative mt-2">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
-                <Input
+              <div className="mt-2">
+                <PasswordInput
                   id="password"
-                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="pl-10"
                   required
                   data-testid="login-password"
                 />
@@ -97,7 +96,7 @@ const LoginPage = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-green-900 hover:bg-green-800 text-white rounded-full h-12"
+              className="w-full bg-green-900 hover:bg-green-800 text-white rounded-full h-12 transition-all hover:scale-[1.02] active:scale-[0.98]"
               data-testid="login-submit"
             >
               {loading ? 'Signing in...' : 'Sign In'}

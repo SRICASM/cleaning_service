@@ -4,11 +4,11 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { Button } from '../components/ui/button';
 import axios from 'axios';
-import { 
-  Sparkles, 
-  SprayCan, 
-  Home, 
-  Building, 
+import {
+  Sparkles,
+  SprayCan,
+  Home,
+  Building,
   Hammer,
   Sofa,
   ArrowRight,
@@ -37,7 +37,7 @@ const ServicesPage = () => {
         const response = await axios.get(`${API}/services`);
         setServices(response.data);
       } catch (error) {
-        console.error('Failed to fetch services:', error);
+        // Services will remain empty on error
       } finally {
         setLoading(false);
       }
@@ -52,14 +52,14 @@ const ServicesPage = () => {
     { id: 'specialty', name: 'Specialty' },
   ];
 
-  const filteredServices = activeCategory === 'all' 
-    ? services 
+  const filteredServices = activeCategory === 'all'
+    ? services
     : services.filter(s => s.category === activeCategory);
 
   return (
     <div className="min-h-screen bg-stone-50">
       <Navbar />
-      
+
       {/* Hero */}
       <section className="pt-32 pb-16 bg-gradient-to-b from-green-50 to-stone-50">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 text-center">
@@ -81,11 +81,10 @@ const ServicesPage = () => {
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`px-6 py-2.5 rounded-full font-medium transition-all ${
-                  activeCategory === cat.id
+                className={`px-6 py-2.5 rounded-full font-medium transition-all ${activeCategory === cat.id
                     ? 'bg-green-900 text-white'
                     : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                }`}
+                  }`}
                 data-testid={`filter-${cat.id}`}
               >
                 {cat.name}
@@ -100,7 +99,7 @@ const ServicesPage = () => {
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           {loading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[1,2,3,4,5,6].map((i) => (
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="bg-white rounded-3xl p-8 animate-pulse">
                   <div className="w-14 h-14 rounded-2xl bg-stone-200 mb-6" />
                   <div className="h-6 bg-stone-200 rounded w-3/4 mb-3" />
@@ -114,8 +113,8 @@ const ServicesPage = () => {
               {filteredServices.map((service) => {
                 const IconComponent = iconMap[service.icon] || Sparkles;
                 return (
-                  <div 
-                    key={service.id} 
+                  <div
+                    key={service.id}
                     className="group bg-white rounded-3xl p-8 border border-stone-100 shadow-soft hover:shadow-lg transition-all duration-300"
                     data-testid={`service-card-${service.id}`}
                   >
@@ -124,26 +123,26 @@ const ServicesPage = () => {
                         <IconComponent className="w-7 h-7 text-lime-600 group-hover:text-white transition-colors" />
                       </div>
                       <span className="px-3 py-1 rounded-full bg-stone-100 text-stone-600 text-xs font-medium capitalize">
-                        {service.category}
+                        {service.category_name || service.category || 'General'}
                       </span>
                     </div>
-                    
+
                     <h3 className="font-heading text-2xl font-semibold text-green-900 mb-3">
                       {service.name}
                     </h3>
                     <p className="text-stone-600 mb-6 line-clamp-3">
-                      {service.description}
+                      {service.description || service.short_description || 'Professional cleaning service'}
                     </p>
-                    
+
                     <div className="space-y-2 mb-6">
-                      {service.features.slice(0, 3).map((feature, idx) => (
+                      {(service.features || []).slice(0, 3).map((feature, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-sm text-stone-600">
                           <Check className="w-4 h-4 text-lime-500" />
                           {feature}
                         </div>
                       ))}
                     </div>
-                    
+
                     <div className="flex items-end justify-between pt-6 border-t border-stone-100">
                       <div>
                         <p className="text-sm text-stone-500">Starting from</p>
@@ -152,7 +151,7 @@ const ServicesPage = () => {
                         </p>
                       </div>
                       <Link to={`/booking?service=${service.id}`}>
-                        <Button 
+                        <Button
                           className="bg-green-900 hover:bg-green-800 text-white rounded-full"
                           data-testid={`book-${service.id}`}
                         >
@@ -179,8 +178,8 @@ const ServicesPage = () => {
             Contact us for custom cleaning solutions tailored to your specific requirements.
           </p>
           <Link to="/contact">
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="bg-lime-500 hover:bg-lime-600 text-white rounded-full px-10"
               data-testid="services-contact"
             >

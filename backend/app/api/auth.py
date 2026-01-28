@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from app.database import get_db
 from app.core.security import (
     hash_password, verify_password, 
@@ -17,8 +17,55 @@ from app.schemas import (
     PasswordResetRequest, PasswordResetConfirm, UserResponse
 )
 from app.config import settings
+from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+@router.get("/me")
+async def get_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get current authenticated user with addresses."""
+    from app.models import Address
+    
+    # Fetch user's addresses
+    addresses = db.query(Address).filter(
+        Address.user_id == current_user.id
+    ).order_by(Address.is_default.desc()).all()
+    
+    # Convert addresses to dict
+    addresses_list = []
+    default_address = None
+    for addr in addresses:
+        addr_dict = {
+            "id": addr.id,
+            "label": addr.label,
+            "address": addr.street_address,
+            "city": addr.city,
+            "postal_code": addr.postal_code,
+            "property_type": addr.property_type,
+            "bedrooms": addr.bedrooms,
+            "bathrooms": addr.bathrooms,
+            "is_default": addr.is_default
+        }
+        addresses_list.append(addr_dict)
+        if addr.is_default:
+            default_address = addr_dict
+    
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "name": f"{current_user.first_name} {current_user.last_name}".strip(),
+        "phone": current_user.phone,
+        "role": current_user.role.value,
+        "addresses": addresses_list,
+        "default_address": default_address,
+        "property_type": default_address.get("property_type") if default_address else None,
+        "bedrooms": default_address.get("bedrooms") if default_address else 2,
+        "bathrooms": default_address.get("bathrooms") if default_address else 1
+    }
 
 
 @router.post("/register")
@@ -32,12 +79,27 @@ async def register(
     if existing:
         raise UserAlreadyExistsException(data.email)
     
+    # Parse name into first_name and last_name
+    first_name = data.first_name
+    last_name = data.last_name
+    
+    if data.name and not (first_name and last_name):
+        # Split name into first and last
+        name_parts = data.name.strip().split(" ", 1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ""
+    
+    if not first_name:
+        first_name = "User"
+    if not last_name:
+        last_name = ""
+    
     # Create user
     user = User(
         email=data.email,
         password_hash=hash_password(data.password),
-        first_name=data.first_name,
-        last_name=data.last_name,
+        first_name=first_name,
+        last_name=last_name,
         phone=data.phone,
         role=UserRole.CUSTOMER,
         status=UserStatus.ACTIVE,
@@ -47,6 +109,20 @@ async def register(
     db.add(user)
     db.commit()
     db.refresh(user)
+    
+    # Create address if provided
+    if data.address and data.city and data.postal_code:
+        from app.models import Address
+        address = Address(
+            user_id=user.id,
+            label="Home",
+            street_address=data.address,
+            city=data.city,
+            postal_code=data.postal_code,
+            is_default=True
+        )
+        db.add(address)
+        db.commit()
     
     # Create tokens
     access_token = create_access_token(user.id, user.email, user.role.value)
@@ -68,7 +144,7 @@ async def register(
         "user": {
             "id": user.id,
             "email": user.email,
-            "name": f"{user.first_name} {user.last_name}",
+            "name": f"{user.first_name} {user.last_name}".strip(),
             "phone": user.phone,
             "role": user.role.value
         }
@@ -241,6 +317,3 @@ async def confirm_password_reset(
     db.commit()
     
     return {"message": "Password has been reset successfully"}
-
-
-from datetime import timedelta

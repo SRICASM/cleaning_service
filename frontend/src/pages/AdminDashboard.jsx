@@ -97,8 +97,8 @@ const DashboardOverview = () => {
     const fetchData = async () => {
       try {
         const [statsRes, bookingsRes] = await Promise.all([
-          axios.get(`${API}/admin/stats`, { headers: getAuthHeaders() }),
-          axios.get(`${API}/admin/bookings`, { headers: getAuthHeaders() })
+          axios.get(`${API}/bookings/admin/stats`, { headers: getAuthHeaders() }),
+          axios.get(`${API}/bookings/admin/all`, { headers: getAuthHeaders() })
         ]);
         setStats(statsRes.data);
         setRecentBookings(bookingsRes.data.slice(0, 5));
@@ -165,8 +165,8 @@ const DashboardOverview = () => {
                 <tr key={booking.id}>
                   <td>
                     <div>
-                      <p className="font-medium text-green-900">{booking.user_name}</p>
-                      <p className="text-stone-500 text-xs">{booking.user_email}</p>
+                      <p className="font-medium text-green-900">{booking.customer_name}</p>
+                      <p className="text-stone-500 text-xs">{booking.customer_email}</p>
                     </div>
                   </td>
                   <td>{booking.service_name}</td>
@@ -176,7 +176,7 @@ const DashboardOverview = () => {
                       {booking.status.replace('_', ' ')}
                     </span>
                   </td>
-                  <td className="font-semibold">${booking.total_price.toFixed(2)}</td>
+                  <td className="font-semibold">${Number(booking.total_price || 0).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -199,7 +199,7 @@ const BookingsManagement = () => {
     setLoading(true);
     try {
       const params = statusFilter !== 'all' ? { status: statusFilter } : {};
-      const response = await axios.get(`${API}/admin/bookings`, {
+      const response = await axios.get(`${API}/bookings/admin/all`, {
         headers: getAuthHeaders(),
         params
       });
@@ -217,7 +217,7 @@ const BookingsManagement = () => {
 
   const updateStatus = async (bookingId, newStatus) => {
     try {
-      await axios.put(`${API}/admin/bookings/${bookingId}/status?status=${newStatus}`, {}, {
+      await axios.put(`${API}/bookings/admin/${bookingId}/status`, { status: newStatus }, {
         headers: getAuthHeaders()
       });
       toast.success('Status updated');
@@ -228,9 +228,9 @@ const BookingsManagement = () => {
   };
 
   const filteredBookings = bookings.filter(b =>
-    b.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    b.user_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    b.service_name.toLowerCase().includes(searchTerm.toLowerCase())
+    (b.customer_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (b.customer_email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (b.service_name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -290,8 +290,8 @@ const BookingsManagement = () => {
                   <tr key={booking.id} data-testid={`admin-booking-${booking.id}`}>
                     <td>
                       <div>
-                        <p className="font-medium text-green-900">{booking.user_name}</p>
-                        <p className="text-stone-500 text-xs">{booking.user_email}</p>
+                        <p className="font-medium text-green-900">{booking.customer_name}</p>
+                        <p className="text-stone-500 text-xs">{booking.customer_email}</p>
                       </div>
                     </td>
                     <td>{booking.service_name}</td>
@@ -317,7 +317,7 @@ const BookingsManagement = () => {
                         {booking.payment_status}
                       </span>
                     </td>
-                    <td className="font-semibold">${booking.total_price.toFixed(2)}</td>
+                    <td className="font-semibold">${Number(booking.total_price || 0).toFixed(2)}</td>
                     <td>
                       <Select
                         value={booking.status}
@@ -356,7 +356,7 @@ const CustomersManagement = () => {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const response = await axios.get(`${API}/admin/customers`, {
+        const response = await axios.get(`${API}/users/admin/customers`, {
           headers: getAuthHeaders()
         });
         setCustomers(response.data);
@@ -455,7 +455,7 @@ const MessagesManagement = () => {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const response = await axios.get(`${API}/admin/contacts`, {
+        const response = await axios.get(`${API}/contact/admin`, {
           headers: getAuthHeaders()
         });
         setMessages(response.data);

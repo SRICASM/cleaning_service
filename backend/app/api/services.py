@@ -88,7 +88,7 @@ async def get_service(
     if service.features:
         try:
             features = json.loads(service.features)
-        except:
+        except (json.JSONDecodeError, ValueError, TypeError):
             features = []
     
     return ServiceResponse(

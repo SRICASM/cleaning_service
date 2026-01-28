@@ -4,7 +4,7 @@ from typing import Optional
 from app.database import get_db
 from app.core.security import decode_token
 from app.core.exceptions import UnauthorizedException, ForbiddenException
-from app.models import User, UserRole
+from app.models import User, UserRole, UserStatus
 
 
 async def get_current_user(
@@ -30,7 +30,7 @@ async def get_current_user(
     if not user:
         raise UnauthorizedException("User not found")
     
-    if user.status.value != "active":
+    if user.status != UserStatus.ACTIVE:
         raise ForbiddenException("User account is not active")
     
     return user

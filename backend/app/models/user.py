@@ -51,7 +51,7 @@ class User(Base):
     addresses = relationship("Address", back_populates="user", cascade="all, delete-orphan")
     bookings = relationship("Booking", back_populates="customer", foreign_keys="Booking.customer_id")
     assigned_bookings = relationship("Booking", back_populates="cleaner", foreign_keys="Booking.cleaner_id")
-    reviews = relationship("Review", back_populates="customer")
+    reviews = relationship("Review", back_populates="customer", foreign_keys="Review.customer_id")
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
     
     @property

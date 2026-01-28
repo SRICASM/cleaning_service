@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
+import { getErrorMessage } from '../utils/errorUtils';
 import axios from 'axios';
 import {
     Sparkles,
@@ -60,7 +61,7 @@ const PropertySetupPage = () => {
             toast.success('Property details saved!');
             navigate('/dashboard');
         } catch (error) {
-            toast.error(error.response?.data?.detail || 'Failed to save property details');
+            toast.error(getErrorMessage(error, 'Failed to save property details'));
         } finally {
             setLoading(false);
         }
@@ -92,8 +93,8 @@ const PropertySetupPage = () => {
                                     key={type.id}
                                     onClick={() => setPropertyType(type.id)}
                                     className={`cursor-pointer p-6 rounded-xl border-2 text-center transition-all ${propertyType === type.id
-                                            ? 'border-green-900 bg-green-50'
-                                            : 'border-stone-200 hover:border-green-900/30'
+                                        ? 'border-green-900 bg-green-50'
+                                        : 'border-stone-200 hover:border-green-900/30'
                                         }`}
                                 >
                                     <type.icon className={`w-8 h-8 mx-auto mb-2 ${propertyType === type.id ? 'text-green-900' : 'text-stone-400'

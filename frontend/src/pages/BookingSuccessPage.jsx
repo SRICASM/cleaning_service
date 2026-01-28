@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
@@ -11,9 +11,41 @@ const BookingSuccessPage = () => {
   const [searchParams] = useSearchParams();
   const { getAuthHeaders } = useAuth();
   const [status, setStatus] = useState('checking');
-  const [attempts, setAttempts] = useState(0);
+  const attemptsRef = useRef(0);
+  const pollingRef = useRef(false);
 
   const sessionId = searchParams.get('session_id');
+
+  const pollStatus = useCallback(async () => {
+    if (pollingRef.current) return;
+    pollingRef.current = true;
+
+    const poll = async () => {
+      try {
+        const response = await axios.get(`${API}/payments/status/${sessionId}`, {
+          headers: getAuthHeaders()
+        });
+
+        if (response.data.payment_status === 'paid') {
+          setStatus('success');
+        } else if (attemptsRef.current < 5) {
+          attemptsRef.current += 1;
+          setTimeout(poll, 2000);
+        } else {
+          setStatus('pending');
+        }
+      } catch (error) {
+        if (attemptsRef.current < 5) {
+          attemptsRef.current += 1;
+          setTimeout(poll, 2000);
+        } else {
+          setStatus('error');
+        }
+      }
+    };
+
+    poll();
+  }, [sessionId, getAuthHeaders]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -21,30 +53,8 @@ const BookingSuccessPage = () => {
       return;
     }
 
-    const pollStatus = async () => {
-      try {
-        const response = await axios.get(`${API}/payments/status/${sessionId}`, {
-          headers: getAuthHeaders()
-        });
-        
-        if (response.data.payment_status === 'paid') {
-          setStatus('success');
-        } else if (attempts < 5) {
-          setTimeout(() => setAttempts(prev => prev + 1), 2000);
-        } else {
-          setStatus('pending');
-        }
-      } catch (error) {
-        if (attempts < 5) {
-          setTimeout(() => setAttempts(prev => prev + 1), 2000);
-        } else {
-          setStatus('error');
-        }
-      }
-    };
-
     pollStatus();
-  }, [sessionId, attempts, getAuthHeaders]);
+  }, [sessionId, pollStatus]);
 
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center px-6">

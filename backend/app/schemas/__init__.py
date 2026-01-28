@@ -15,7 +15,7 @@ from app.schemas.booking import (
     BookingCreate, BookingUpdate, BookingStatusUpdate,
     BookingAssignCleaner, BookingReschedule, BookingCancel,
     BookingResponse, BookingListResponse,
-    TimeSlotResponse, AvailabilityRequest, AvailabilityResponse,
+    TimeSlotResponse, AvailabilityRequest, AvailabilityResponse, AvailableSlot,
     BookingStatus, PaymentStatus
 )
 from app.schemas.payment import (
@@ -48,7 +48,7 @@ __all__ = [
     "BookingCreate", "BookingUpdate", "BookingStatusUpdate",
     "BookingAssignCleaner", "BookingReschedule", "BookingCancel",
     "BookingResponse", "BookingListResponse",
-    "TimeSlotResponse", "AvailabilityRequest", "AvailabilityResponse",
+    "TimeSlotResponse", "AvailabilityRequest", "AvailabilityResponse", "AvailableSlot",
     "BookingStatus", "PaymentStatus",
     # Payment
     "PaymentCreateRequest", "PaymentCreateResponse",

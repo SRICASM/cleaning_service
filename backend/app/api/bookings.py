@@ -13,7 +13,8 @@ from app.core.exceptions import (
 )
 from app.models import (
     Booking, BookingStatus, BookingStatusHistory, PaymentStatus,
-    Service, AddOn, Address, User, Payment, booking_add_ons
+    Service, AddOn, Address, User, Payment, booking_add_ons,
+    UserRole, UserStatus
 )
 from app.schemas import (
     BookingCreate, BookingUpdate, BookingStatusUpdate,
@@ -263,6 +264,10 @@ async def list_my_bookings(
     
     result = []
     for booking in bookings:
+        scheduled_dt = booking.scheduled_date
+        date_str = scheduled_dt.strftime('%Y-%m-%d') if scheduled_dt else ''
+        time_str = scheduled_dt.strftime('%I:%M %p') if scheduled_dt else ''
+        
         result.append(BookingListResponse(
             id=booking.id,
             booking_number=booking.booking_number,
@@ -270,9 +275,10 @@ async def list_my_bookings(
             customer_email=booking.customer.email,
             service_name=booking.service.name,
             city=booking.address.city,
-            scheduled_date=booking.scheduled_date,
-            status=booking.status,
-            payment_status=booking.payment_status,
+            scheduled_date=date_str,
+            scheduled_time=time_str,
+            status=booking.status.value if hasattr(booking.status, 'value') else str(booking.status),
+            payment_status=booking.payment_status.value if hasattr(booking.payment_status, 'value') else str(booking.payment_status),
             total_price=booking.total_price,
             created_at=booking.created_at
         ))
@@ -326,9 +332,9 @@ async def cancel_booking(
     if booking.status in [BookingStatus.COMPLETED, BookingStatus.CANCELLED, BookingStatus.REFUNDED]:
         raise BookingCannotBeCancelledException("Booking is already completed or cancelled")
     
-    # Check cancellation deadline (e.g., 24 hours before)
-    if booking.scheduled_date - datetime.now(timezone.utc) < timedelta(hours=24):
-        raise BookingCannotBeCancelledException("Cannot cancel less than 24 hours before scheduled time")
+    # Check cancellation deadline (30 minutes before scheduled time)
+    if booking.scheduled_date - datetime.now(timezone.utc) < timedelta(minutes=30):
+        raise BookingCannotBeCancelledException("Cannot cancel less than 30 minutes before scheduled time")
     
     old_status = booking.status
     booking.status = BookingStatus.CANCELLED
@@ -437,6 +443,10 @@ async def list_all_bookings(
     
     result = []
     for booking in bookings:
+        scheduled_dt = booking.scheduled_date
+        date_str = scheduled_dt.strftime('%Y-%m-%d') if scheduled_dt else ''
+        time_str = scheduled_dt.strftime('%I:%M %p') if scheduled_dt else ''
+        
         result.append(BookingListResponse(
             id=booking.id,
             booking_number=booking.booking_number,
@@ -444,9 +454,10 @@ async def list_all_bookings(
             customer_email=booking.customer.email,
             service_name=booking.service.name,
             city=booking.address.city,
-            scheduled_date=booking.scheduled_date,
-            status=booking.status,
-            payment_status=booking.payment_status,
+            scheduled_date=date_str,
+            scheduled_time=time_str,
+            status=booking.status.value if hasattr(booking.status, 'value') else str(booking.status),
+            payment_status=booking.payment_status.value if hasattr(booking.payment_status, 'value') else str(booking.payment_status),
             total_price=booking.total_price,
             created_at=booking.created_at
         ))
@@ -507,8 +518,8 @@ async def assign_cleaner(
     # Validate cleaner
     cleaner = db.query(User).filter(
         User.id == data.cleaner_id,
-        User.role.in_(["cleaner", "admin"]),
-        User.status == "active"
+        User.role.in_([UserRole.CLEANER, UserRole.ADMIN]),
+        User.status == UserStatus.ACTIVE
     ).first()
     
     if not cleaner:
@@ -541,7 +552,7 @@ async def get_booking_stats(
         Booking.payment_status == PaymentStatus.PAID
     ).scalar() or 0
     
-    total_customers = db.query(User).filter(User.role == "customer").count()
+    total_customers = db.query(User).filter(User.role == UserRole.CUSTOMER).count()
     
     return {
         "total_bookings": total_bookings,

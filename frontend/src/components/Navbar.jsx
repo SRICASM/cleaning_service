@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { Menu, X, User, LogOut, LayoutDashboard, Calendar, Sparkles } from 'lucide-react';
+import { Menu, X, User, LogOut, LayoutDashboard, Calendar, Sparkles, Settings } from 'lucide-react';
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -61,7 +61,7 @@ const Navbar = () => {
             {user ? (
               <>
                 <Link to="/booking">
-                  <Button 
+                  <Button
                     className="bg-lime-500 hover:bg-lime-600 text-white rounded-full px-6"
                     data-testid="nav-book-now"
                   >
@@ -80,6 +80,10 @@ const Navbar = () => {
                     <DropdownMenuItem onClick={() => navigate('/dashboard')} data-testid="nav-dashboard">
                       <LayoutDashboard className="w-4 h-4 mr-2" />
                       Dashboard
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/profile')} data-testid="nav-profile">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Profile
                     </DropdownMenuItem>
                     {user.role === 'admin' && (
                       <DropdownMenuItem onClick={() => navigate('/admin')} data-testid="nav-admin">
@@ -103,7 +107,7 @@ const Navbar = () => {
                   </Button>
                 </Link>
                 <Link to="/booking">
-                  <Button 
+                  <Button
                     className="bg-green-900 hover:bg-green-800 text-white rounded-full px-6"
                     data-testid="nav-get-started"
                   >
@@ -149,15 +153,21 @@ const Navbar = () => {
                       Dashboard
                     </Button>
                   </Link>
+                  <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="outline" className="w-full justify-start" data-testid="nav-mobile-profile">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Profile
+                    </Button>
+                  </Link>
                   <Link to="/booking" onClick={() => setMobileMenuOpen(false)}>
                     <Button className="w-full bg-lime-500 hover:bg-lime-600" data-testid="nav-mobile-book">
                       <Calendar className="w-4 h-4 mr-2" />
                       Book Now
                     </Button>
                   </Link>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start text-red-600" 
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-red-600"
                     onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
                     data-testid="nav-mobile-logout"
                   >

@@ -4,8 +4,8 @@ from sqlalchemy import func
 from typing import List, Optional
 from app.database import get_db
 from app.api.deps import get_current_user, get_admin_user
-from app.core.exceptions import NotFoundException, ForbiddenException
-from app.models import User, Address, Booking
+from app.core.exceptions import NotFoundException, ForbiddenException, BadRequestException
+from app.models import User, Address, Booking, UserRole, UserStatus
 from app.schemas import (
     UserResponse, UserUpdate, UserListResponse,
     AddressCreate, AddressUpdate, AddressResponse
@@ -37,6 +37,68 @@ async def update_current_user_profile(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.put("/profile")
+async def update_user_profile_with_property(
+    data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update user profile including property details (for setup flow)."""
+    # Update user fields if provided
+    if "first_name" in data:
+        current_user.first_name = data["first_name"]
+    if "last_name" in data:
+        current_user.last_name = data["last_name"]
+    if "phone" in data:
+        current_user.phone = data["phone"]
+    
+    # Update default address with property details
+    property_type = data.get("property_type")
+    bedrooms = data.get("bedrooms")
+    bathrooms = data.get("bathrooms")
+    
+    if property_type or bedrooms is not None or bathrooms is not None:
+        # Find or create default address
+        default_address = db.query(Address).filter(
+            Address.user_id == current_user.id,
+            Address.is_default == True
+        ).first()
+        
+        if default_address:
+            if property_type:
+                default_address.property_type = property_type
+            if bedrooms is not None:
+                default_address.bedrooms = bedrooms
+            if bathrooms is not None:
+                default_address.bathrooms = bathrooms
+        else:
+            # Create a placeholder address with property info
+            default_address = Address(
+                user_id=current_user.id,
+                label="Home",
+                street_address="Please update your address",
+                city="Unknown",
+                postal_code="00000",
+                property_type=property_type,
+                bedrooms=bedrooms,
+                bathrooms=bathrooms,
+                is_default=True
+            )
+            db.add(default_address)
+    
+    db.commit()
+    db.refresh(current_user)
+    
+    # Return user in format frontend expects
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "name": f"{current_user.first_name} {current_user.last_name}".strip(),
+        "phone": current_user.phone,
+        "role": current_user.role.value
+    }
 
 
 # ============ Addresses ============
@@ -158,6 +220,45 @@ async def delete_address(
 
 # ============ Admin: User Management ============
 
+@router.get("/admin/customers")
+async def list_customers(
+    search: Optional[str] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    admin: User = Depends(get_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Admin: List all customers with booking counts."""
+    query = db.query(User).filter(User.role == UserRole.CUSTOMER)
+    
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            (User.email.ilike(search_term)) |
+            (User.first_name.ilike(search_term)) |
+            (User.last_name.ilike(search_term))
+        )
+    
+    users = query.order_by(User.created_at.desc()).offset(skip).limit(limit).all()
+    
+    # Get booking counts and format response
+    result = []
+    for user in users:
+        booking_count = db.query(Booking).filter(
+            Booking.customer_id == user.id
+        ).count()
+        
+        result.append({
+            "id": user.id,
+            "name": f"{user.first_name} {user.last_name}".strip(),
+            "email": user.email,
+            "phone": user.phone,
+            "booking_count": booking_count,
+            "created_at": user.created_at
+        })
+    
+    return result
+
 @router.get("/", response_model=List[UserListResponse])
 async def list_users(
     role: Optional[str] = Query(None),
@@ -170,11 +271,19 @@ async def list_users(
 ):
     """Admin: List all users with filters."""
     query = db.query(User)
-    
+
     if role:
-        query = query.filter(User.role == role)
+        try:
+            role_enum = UserRole(role)
+            query = query.filter(User.role == role_enum)
+        except ValueError:
+            pass  # Invalid role, skip filter
     if status:
-        query = query.filter(User.status == status)
+        try:
+            status_enum = UserStatus(status)
+            query = query.filter(User.status == status_enum)
+        except ValueError:
+            pass  # Invalid status, skip filter
     if search:
         search_term = f"%{search}%"
         query = query.filter(
@@ -232,13 +341,15 @@ async def update_user_status(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise NotFoundException("User not found")
-    
-    if status not in ["active", "inactive", "suspended"]:
-        raise ValueError("Invalid status")
-    
-    user.status = status
+
+    try:
+        status_enum = UserStatus(status)
+    except ValueError:
+        raise BadRequestException("Invalid status. Must be 'active', 'inactive', or 'suspended'")
+
+    user.status = status_enum
     db.commit()
-    
+
     return {"message": f"User status updated to {status}"}
 
 
@@ -253,11 +364,13 @@ async def update_user_role(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise NotFoundException("User not found")
-    
-    if role not in ["customer", "cleaner", "admin"]:
-        raise ValueError("Invalid role")
-    
-    user.role = role
+
+    try:
+        role_enum = UserRole(role)
+    except ValueError:
+        raise BadRequestException("Invalid role. Must be 'customer', 'cleaner', or 'admin'")
+
+    user.role = role_enum
     db.commit()
-    
+
     return {"message": f"User role updated to {role}"}

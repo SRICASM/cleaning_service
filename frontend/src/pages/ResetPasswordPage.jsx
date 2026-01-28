@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
+import { getErrorMessage } from '../utils/errorUtils';
 import axios from 'axios';
 import { Sparkles, Lock, ArrowRight, CheckCircle } from 'lucide-react';
 
@@ -46,7 +47,7 @@ const ResetPasswordPage = () => {
             setSuccess(true);
             toast.success('Password reset successful!');
         } catch (error) {
-            toast.error(error.response?.data?.detail || 'Failed to reset password');
+            toast.error(getErrorMessage(error, 'Failed to reset password'));
         } finally {
             setLoading(false);
         }

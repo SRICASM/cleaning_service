@@ -21,9 +21,15 @@ class UserStatus(str, Enum):
 class UserRegister(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=6, max_length=100)
-    first_name: str = Field(..., min_length=1, max_length=100)
-    last_name: str = Field(..., min_length=1, max_length=100)
+    # Accept either name (from frontend) or first_name/last_name
+    name: Optional[str] = None  # Full name from frontend
+    first_name: Optional[str] = Field(None, max_length=100)
+    last_name: Optional[str] = Field(None, max_length=100)
     phone: Optional[str] = Field(None, max_length=20)
+    # Address fields from frontend (stored separately after registration)
+    address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
 
 
 class UserLogin(BaseModel):

@@ -38,7 +38,7 @@ const HomePage = () => {
         const response = await axios.get(`${API}/services`);
         setServices(response.data.slice(0, 4));
       } catch (error) {
-        console.error('Failed to fetch services:', error);
+        // Silently fail - services section will just be empty
       }
     };
     fetchServices();

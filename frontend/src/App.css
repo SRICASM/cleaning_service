@@ -61,11 +61,21 @@
 
 /* Selection card for booking */
 .selection-card {
-    @apply relative p-6 rounded-2xl border-2 border-stone-200 cursor-pointer transition-all duration-200;
+    @apply relative p-6 rounded-2xl border-2 border-stone-200 cursor-pointer transition-all duration-300;
 }
 
 .selection-card:hover {
-    @apply border-green-900/30 bg-green-50/30;
+    @apply border-green-900/30 bg-green-50/30 shadow-lg;
+    transform: translateY(-4px);
+}
+
+.booking-card {
+    @apply bg-white rounded-2xl border border-stone-200 p-6 transition-all duration-300;
+}
+
+.booking-card:hover {
+    @apply shadow-lg border-green-200;
+    transform: translateY(-2px);
 }
 
 .selection-card.selected {
@@ -153,8 +163,251 @@
     .service-card {
         @apply p-6;
     }
-    
+
     .testimonial-card {
         @apply p-6;
+    }
+}
+
+/* ========================================
+   Micro-interactions & Animations
+   ======================================== */
+
+/* Fade animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Scale animations */
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+@keyframes shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+        transform: translateX(-2px);
+    }
+    20%, 40%, 60%, 80% {
+        transform: translateX(2px);
+    }
+}
+
+@keyframes checkmark {
+    0% {
+        stroke-dashoffset: 50;
+    }
+    100% {
+        stroke-dashoffset: 0;
+    }
+}
+
+/* Animation classes */
+.animate-fadeIn {
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-fadeInUp {
+    animation: fadeInUp 0.4s ease-out forwards;
+}
+
+.animate-fadeInDown {
+    animation: fadeInDown 0.4s ease-out forwards;
+}
+
+.animate-slideInRight {
+    animation: slideInRight 0.4s ease-out forwards;
+}
+
+.animate-slideInLeft {
+    animation: slideInLeft 0.4s ease-out forwards;
+}
+
+.animate-scaleIn {
+    animation: scaleIn 0.3s ease-out forwards;
+}
+
+.animate-bounce-subtle {
+    animation: bounce 0.5s ease-in-out;
+}
+
+.animate-shake {
+    animation: shake 0.4s ease-in-out;
+}
+
+/* Stagger animations for lists */
+.stagger-animation > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-animation > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-animation > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-animation > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-animation > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-animation > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-animation > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-animation > *:nth-child(8) { animation-delay: 350ms; }
+
+/* Interactive button enhancements */
+.btn-interactive {
+    @apply transition-all duration-200;
+}
+
+.btn-interactive:hover {
+    transform: translateY(-1px);
+}
+
+.btn-interactive:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* Card hover effects */
+.card-hover {
+    @apply transition-all duration-300;
+}
+
+.card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgb(0 0 0 / 0.08);
+}
+
+/* Focus ring styles */
+.focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:ring-offset-2;
+}
+
+/* Loading states */
+.loading-shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Success checkmark animation */
+.success-checkmark {
+    stroke-dasharray: 50;
+    stroke-dashoffset: 50;
+    animation: checkmark 0.5s ease-out forwards;
+    animation-delay: 0.2s;
+}
+
+/* Tooltip animation */
+.tooltip-appear {
+    animation: fadeInUp 0.2s ease-out forwards;
+}
+
+/* Input focus animation */
+input:focus,
+textarea:focus,
+select:focus {
+    @apply transition-shadow duration-200;
+}
+
+/* Number counter animation */
+@keyframes countUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.count-up {
+    animation: countUp 0.5s ease-out forwards;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
     }
 }

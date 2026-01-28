@@ -162,7 +162,7 @@ class BookingResponse(BaseModel):
 
 
 class BookingListResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
     
     id: int
     booking_number: str
@@ -170,9 +170,10 @@ class BookingListResponse(BaseModel):
     customer_email: str
     service_name: str
     city: str
-    scheduled_date: datetime
-    status: BookingStatus
-    payment_status: PaymentStatus
+    scheduled_date: str  # Formatted date string
+    scheduled_time: str  # Formatted time string
+    status: str  # String value of enum
+    payment_status: str  # String value of enum
     total_price: Decimal
     created_at: datetime
 

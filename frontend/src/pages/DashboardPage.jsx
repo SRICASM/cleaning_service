@@ -1,22 +1,34 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { Button } from '../components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { ConfirmationModal } from '../components/ui/confirmation-modal';
+import { StatusBadge } from '../components/ui/status-badge';
+import { DashboardSkeleton } from '../components/ui/skeletons';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
 import { toast } from 'sonner';
+import { getErrorMessage } from '../utils/errorUtils';
 import axios from 'axios';
 import {
   Calendar,
   Clock,
   MapPin,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Loader2,
   Plus,
   Edit,
-  X
+  ArrowUpDown,
+  Filter,
+  CalendarDays,
+  History,
+  RefreshCcw
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -25,6 +37,11 @@ const DashboardPage = () => {
   const { user, getAuthHeaders } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('upcoming');
+  const [sortBy, setSortBy] = useState('date-asc');
+  const [filterStatus, setFilterStatus] = useState('all');
+
+  // Modal states
   const [rescheduleModal, setRescheduleModal] = useState(null);
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
@@ -72,10 +89,6 @@ const DashboardPage = () => {
     return `${String(hours).padStart(2, '0')}:${minutes}`;
   };
 
-  const openCancelModal = (booking) => {
-    setCancelModal(booking);
-  };
-
   const handleCancelConfirm = async () => {
     if (!cancelModal) return;
 
@@ -88,7 +101,7 @@ const DashboardPage = () => {
       setCancelModal(null);
       fetchBookings();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to cancel booking');
+      toast.error(getErrorMessage(error, 'Failed to cancel booking'));
     } finally {
       setCancelLoading(false);
     }
@@ -102,9 +115,17 @@ const DashboardPage = () => {
 
     setRescheduleLoading(true);
     try {
+      const [time, period] = rescheduleTime.split(' ');
+      let [hours, minutes] = time.split(':').map(Number);
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+
+      const scheduledDateTime = new Date(rescheduleDate);
+      scheduledDateTime.setHours(hours, minutes, 0, 0);
+
       await axios.put(`${API}/bookings/${rescheduleModal.id}/reschedule`, {
-        scheduled_date: rescheduleDate,
-        scheduled_time: rescheduleTime
+        new_date: scheduledDateTime.toISOString(),
+        reason: 'Customer rescheduled'
       }, {
         headers: getAuthHeaders()
       });
@@ -112,7 +133,14 @@ const DashboardPage = () => {
       setRescheduleModal(null);
       fetchBookings();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to reschedule booking');
+      const errorDetail = error.response?.data?.detail;
+      if (typeof errorDetail === 'string') {
+        toast.error(errorDetail);
+      } else if (Array.isArray(errorDetail)) {
+        toast.error(errorDetail.map(e => e.msg).join(', '));
+      } else {
+        toast.error('Failed to reschedule booking');
+      }
     } finally {
       setRescheduleLoading(false);
     }
@@ -124,25 +152,143 @@ const DashboardPage = () => {
     setRescheduleTime(booking.scheduled_time);
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
-      case 'cancelled':
-        return <XCircle className="w-5 h-5 text-red-600" />;
-      case 'confirmed':
-      case 'in_progress':
-        return <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />;
-      default:
-        return <AlertCircle className="w-5 h-5 text-amber-600" />;
-    }
+  // Filter and sort bookings
+  const { upcomingBookings, pastBookings } = useMemo(() => {
+    const upcoming = bookings.filter(b =>
+      ['pending', 'confirmed', 'in_progress'].includes(b.status)
+    );
+    const past = bookings.filter(b =>
+      ['completed', 'cancelled'].includes(b.status)
+    );
+    return { upcomingBookings: upcoming, pastBookings: past };
+  }, [bookings]);
+
+  const sortBookings = (list) => {
+    return [...list].sort((a, b) => {
+      const dateA = new Date(`${a.scheduled_date}T${convertTo24Hour(a.scheduled_time)}`);
+      const dateB = new Date(`${b.scheduled_date}T${convertTo24Hour(b.scheduled_time)}`);
+
+      switch (sortBy) {
+        case 'date-asc':
+          return dateA - dateB;
+        case 'date-desc':
+          return dateB - dateA;
+        case 'price-asc':
+          return (a.total_price || 0) - (b.total_price || 0);
+        case 'price-desc':
+          return (b.total_price || 0) - (a.total_price || 0);
+        default:
+          return dateA - dateB;
+      }
+    });
   };
 
-  const upcomingBookings = bookings.filter(b =>
-    ['pending', 'confirmed', 'in_progress'].includes(b.status)
+  const filterBookings = (list) => {
+    if (filterStatus === 'all') return list;
+    return list.filter(b => b.status === filterStatus);
+  };
+
+  const displayedUpcoming = sortBookings(filterBookings(upcomingBookings));
+  const displayedPast = sortBookings(filterBookings(pastBookings));
+
+  const BookingCard = ({ booking, isPast = false }) => (
+    <div
+      className={`booking-card group ${isPast ? 'opacity-80' : ''}`}
+      data-testid={`${isPast ? 'past-' : ''}booking-${booking.id}`}
+    >
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-2">
+            <h3 className="font-heading text-lg font-semibold text-green-900">
+              {booking.service_name}
+            </h3>
+            <StatusBadge status={booking.status} />
+            {booking.payment_status === 'paid' && (
+              <StatusBadge status="paid" />
+            )}
+          </div>
+          <div className="flex flex-wrap gap-4 text-sm text-stone-600">
+            <span className="flex items-center gap-1">
+              <Calendar className="w-4 h-4" />
+              {booking.scheduled_date}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="w-4 h-4" />
+              {booking.scheduled_time}
+            </span>
+            <span className="flex items-center gap-1">
+              <MapPin className="w-4 h-4" />
+              {booking.address}, {booking.city}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <p className="font-heading text-2xl font-bold text-lime-700">
+            ${Number(booking.total_price || 0).toFixed(2)}
+          </p>
+          {!isPast && canModifyBooking(booking) ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openRescheduleModal(booking)}
+                className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                data-testid={`reschedule-${booking.id}`}
+              >
+                <Edit className="w-4 h-4 mr-1" />
+                Reschedule
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCancelModal(booking)}
+                className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                data-testid={`cancel-${booking.id}`}
+              >
+                Cancel
+              </Button>
+            </>
+          ) : !isPast ? (
+            <span className="text-xs text-stone-500 bg-stone-100 px-2 py-1 rounded">
+              Cannot modify within 30 min
+            </span>
+          ) : booking.status === 'completed' ? (
+            <Link to="/booking">
+              <Button variant="outline" size="sm" data-testid={`rebook-${booking.id}`}>
+                <RefreshCcw className="w-4 h-4 mr-1" />
+                Book Again
+              </Button>
+            </Link>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
-  const pastBookings = bookings.filter(b =>
-    ['completed', 'cancelled'].includes(b.status)
+
+  const EmptyState = ({ type }) => (
+    <div className="text-center py-16 bg-white rounded-2xl border border-stone-200">
+      {type === 'upcoming' ? (
+        <CalendarDays className="w-12 h-12 mx-auto text-stone-300 mb-4" />
+      ) : (
+        <History className="w-12 h-12 mx-auto text-stone-300 mb-4" />
+      )}
+      <h3 className="font-heading text-lg font-semibold text-green-900 mb-2">
+        {type === 'upcoming' ? 'No upcoming bookings' : 'No past bookings'}
+      </h3>
+      <p className="text-stone-600 mb-4">
+        {type === 'upcoming'
+          ? 'Book a cleaning to get started!'
+          : 'Your booking history will appear here.'}
+      </p>
+      {type === 'upcoming' && (
+        <Link to="/booking">
+          <Button className="bg-lime-500 hover:bg-lime-600 text-white rounded-full">
+            <Plus className="w-4 h-4 mr-2" />
+            Book a Clean
+          </Button>
+        </Link>
+      )}
+    </div>
   );
 
   return (
@@ -151,203 +297,124 @@ const DashboardPage = () => {
 
       <main className="pt-24 pb-20">
         <div className="max-w-6xl mx-auto px-6 lg:px-8">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
-            <div>
-              <h1 className="font-heading text-3xl md:text-4xl font-bold text-green-900">
-                Welcome back, {user?.name?.split(' ')[0]}!
-              </h1>
-              <p className="text-stone-600 mt-1">
-                Manage your bookings and account here.
-              </p>
-            </div>
-            <Link to="/booking">
-              <Button className="bg-lime-500 hover:bg-lime-600 text-white rounded-full" data-testid="dashboard-new-booking">
-                <Plus className="w-4 h-4 mr-2" />
-                New Booking
-              </Button>
-            </Link>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-            <div className="stats-card">
-              <p className="text-stone-500 text-sm mb-1">Total Bookings</p>
-              <p className="font-heading text-3xl font-bold text-green-900">{bookings.length}</p>
-            </div>
-            <div className="stats-card">
-              <p className="text-stone-500 text-sm mb-1">Upcoming</p>
-              <p className="font-heading text-3xl font-bold text-blue-600">{upcomingBookings.length}</p>
-            </div>
-            <div className="stats-card">
-              <p className="text-stone-500 text-sm mb-1">Completed</p>
-              <p className="font-heading text-3xl font-bold text-lime-600">
-                {bookings.filter(b => b.status === 'completed').length}
-              </p>
-            </div>
-            <div className="stats-card">
-              <p className="text-stone-500 text-sm mb-1">Total Spent</p>
-              <p className="font-heading text-3xl font-bold text-green-900">
-                ${bookings.filter(b => b.payment_status === 'paid').reduce((sum, b) => sum + b.total_price, 0).toFixed(0)}
-              </p>
-            </div>
-          </div>
-
           {loading ? (
-            <div className="text-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto text-green-900" />
-              <p className="text-stone-600 mt-2">Loading bookings...</p>
-            </div>
-          ) : bookings.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-3xl border border-stone-200">
-              <Calendar className="w-16 h-16 mx-auto text-stone-300 mb-4" />
-              <h3 className="font-heading text-xl font-semibold text-green-900 mb-2">
-                No bookings yet
-              </h3>
-              <p className="text-stone-600 mb-6">
-                Book your first cleaning and experience the CleanUpCrew difference.
-              </p>
-              <Link to="/booking">
-                <Button className="bg-green-900 hover:bg-green-800 text-white rounded-full" data-testid="dashboard-first-booking">
-                  Book Your First Clean
-                </Button>
-              </Link>
-            </div>
+            <DashboardSkeleton />
           ) : (
             <>
-              {/* Upcoming Bookings */}
-              {upcomingBookings.length > 0 && (
-                <section className="mb-10">
-                  <h2 className="font-heading text-xl font-semibold text-green-900 mb-4">
-                    Upcoming Bookings
-                  </h2>
-                  <div className="space-y-4">
-                    {upcomingBookings.map((booking) => (
-                      <div
-                        key={booking.id}
-                        className="bg-white rounded-2xl border border-stone-200 p-6 hover:shadow-md transition-shadow"
-                        data-testid={`booking-${booking.id}`}
-                      >
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="font-heading text-lg font-semibold text-green-900">
-                                {booking.service_name}
-                              </h3>
-                              <span className={`badge badge-${booking.status}`}>
-                                {booking.status.replace('_', ' ')}
-                              </span>
-                              {booking.payment_status === 'paid' && (
-                                <span className="badge badge-paid">Paid</span>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap gap-4 text-sm text-stone-600">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-4 h-4" />
-                                {booking.scheduled_date}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-4 h-4" />
-                                {booking.scheduled_time}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <MapPin className="w-4 h-4" />
-                                {booking.address}, {booking.city}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <p className="font-heading text-2xl font-bold text-lime-600">
-                              ${booking.total_price.toFixed(2)}
-                            </p>
-                            {canModifyBooking(booking) ? (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openRescheduleModal(booking)}
-                                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                                  data-testid={`reschedule-${booking.id}`}
-                                >
-                                  <Edit className="w-4 h-4 mr-1" />
-                                  Reschedule
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openCancelModal(booking)}
-                                  className="text-red-600 border-red-200 hover:bg-red-50"
-                                  data-testid={`cancel-${booking.id}`}
-                                >
-                                  Cancel
-                                </Button>
-                              </>
-                            ) : (
-                              <span className="text-xs text-stone-500 bg-stone-100 px-2 py-1 rounded">
-                                Cannot modify within 30 min
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
+              {/* Header */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+                <div>
+                  <h1 className="font-heading text-3xl md:text-4xl font-bold text-green-900">
+                    Welcome back, {user?.name?.split(' ')[0]}!
+                  </h1>
+                  <p className="text-stone-600 mt-1">
+                    Manage your bookings and account here.
+                  </p>
+                </div>
+                <Link to="/booking">
+                  <Button className="bg-lime-500 hover:bg-lime-600 text-white rounded-full" data-testid="dashboard-new-booking">
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Booking
+                  </Button>
+                </Link>
+              </div>
 
-              {/* Past Bookings */}
-              {pastBookings.length > 0 && (
-                <section>
-                  <h2 className="font-heading text-xl font-semibold text-green-900 mb-4">
-                    Past Bookings
-                  </h2>
-                  <div className="space-y-4">
-                    {pastBookings.map((booking) => (
-                      <div
-                        key={booking.id}
-                        className="bg-white rounded-2xl border border-stone-200 p-6 opacity-75"
-                        data-testid={`past-booking-${booking.id}`}
-                      >
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              {getStatusIcon(booking.status)}
-                              <h3 className="font-heading text-lg font-semibold text-green-900">
-                                {booking.service_name}
-                              </h3>
-                              <span className={`badge badge-${booking.status}`}>
-                                {booking.status}
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap gap-4 text-sm text-stone-500">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-4 h-4" />
-                                {booking.scheduled_date}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <MapPin className="w-4 h-4" />
-                                {booking.address}, {booking.city}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <p className="font-heading text-xl font-bold text-stone-500">
-                              ${booking.total_price.toFixed(2)}
-                            </p>
-                            {booking.status === 'completed' && (
-                              <Link to="/booking">
-                                <Button variant="outline" size="sm" data-testid={`rebook-${booking.id}`}>
-                                  Book Again
-                                </Button>
-                              </Link>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+              {/* Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+                <div className="stats-card">
+                  <p className="text-stone-500 text-sm mb-1">Total Bookings</p>
+                  <p className="font-heading text-3xl font-bold text-green-900">{bookings.length}</p>
+                </div>
+                <div className="stats-card">
+                  <p className="text-stone-500 text-sm mb-1">Upcoming</p>
+                  <p className="font-heading text-3xl font-bold text-blue-600">{upcomingBookings.length}</p>
+                </div>
+                <div className="stats-card">
+                  <p className="text-stone-500 text-sm mb-1">Completed</p>
+                  <p className="font-heading text-3xl font-bold text-lime-600">
+                    {bookings.filter(b => b.status === 'completed').length}
+                  </p>
+                </div>
+                <div className="stats-card">
+                  <p className="text-stone-500 text-sm mb-1">Total Spent</p>
+                  <p className="font-heading text-3xl font-bold text-green-900">
+                    ${bookings.filter(b => b.payment_status === 'paid').reduce((sum, b) => sum + Number(b.total_price || 0), 0).toFixed(0)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Tabs */}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <TabsList className="bg-white border border-stone-200 p-1 rounded-full">
+                    <TabsTrigger
+                      value="upcoming"
+                      className="rounded-full data-[state=active]:bg-green-900 data-[state=active]:text-white px-6"
+                    >
+                      <CalendarDays className="w-4 h-4 mr-2" />
+                      Upcoming ({upcomingBookings.length})
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="past"
+                      className="rounded-full data-[state=active]:bg-green-900 data-[state=active]:text-white px-6"
+                    >
+                      <History className="w-4 h-4 mr-2" />
+                      Past ({pastBookings.length})
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* Filters */}
+                  <div className="flex items-center gap-3">
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                      <SelectTrigger className="w-[160px] rounded-full bg-white">
+                        <ArrowUpDown className="w-4 h-4 mr-2" />
+                        <SelectValue placeholder="Sort by" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="date-asc">Date (Earliest)</SelectItem>
+                        <SelectItem value="date-desc">Date (Latest)</SelectItem>
+                        <SelectItem value="price-asc">Price (Low-High)</SelectItem>
+                        <SelectItem value="price-desc">Price (High-Low)</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                      <SelectTrigger className="w-[140px] rounded-full bg-white">
+                        <Filter className="w-4 h-4 mr-2" />
+                        <SelectValue placeholder="Filter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="confirmed">Confirmed</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                </section>
-              )}
+                </div>
+
+                <TabsContent value="upcoming" className="space-y-4 mt-6">
+                  {displayedUpcoming.length > 0 ? (
+                    displayedUpcoming.map((booking) => (
+                      <BookingCard key={booking.id} booking={booking} />
+                    ))
+                  ) : (
+                    <EmptyState type="upcoming" />
+                  )}
+                </TabsContent>
+
+                <TabsContent value="past" className="space-y-4 mt-6">
+                  {displayedPast.length > 0 ? (
+                    displayedPast.map((booking) => (
+                      <BookingCard key={booking.id} booking={booking} isPast />
+                    ))
+                  ) : (
+                    <EmptyState type="past" />
+                  )}
+                </TabsContent>
+              </Tabs>
             </>
           )}
         </div>
@@ -356,134 +423,73 @@ const DashboardPage = () => {
       <Footer />
 
       {/* Reschedule Modal */}
-      {rescheduleModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-heading text-xl font-semibold text-green-900">
-                Reschedule Booking
-              </h3>
-              <button
-                onClick={() => setRescheduleModal(null)}
-                className="text-stone-400 hover:text-stone-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      <ConfirmationModal
+        open={!!rescheduleModal}
+        onOpenChange={(open) => !open && setRescheduleModal(null)}
+        title="Reschedule Booking"
+        description={rescheduleModal ? `Reschedule your ${rescheduleModal.service_name} appointment` : ''}
+        confirmText="Confirm Reschedule"
+        cancelText="Cancel"
+        onConfirm={handleReschedule}
+        loading={rescheduleLoading}
+        variant="default"
+      >
+        <div className="space-y-4 py-2">
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-2">
+              New Date
+            </label>
+            <input
+              type="date"
+              value={rescheduleDate}
+              onChange={(e) => setRescheduleDate(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+              className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            />
+          </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-2">
-                  Service: {rescheduleModal.service_name}
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-2">
-                  New Date
-                </label>
-                <input
-                  type="date"
-                  value={rescheduleDate}
-                  onChange={(e) => setRescheduleDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-2">
-                  New Time
-                </label>
-                <select
-                  value={rescheduleTime}
-                  onChange={(e) => setRescheduleTime(e.target.value)}
-                  className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                >
-                  <option value="">Select a time</option>
-                  {timeSlots.map(time => (
-                    <option key={time} value={time}>{time}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setRescheduleModal(null)}
-                className="flex-1 rounded-full"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleReschedule}
-                disabled={rescheduleLoading}
-                className="flex-1 bg-green-900 hover:bg-green-800 text-white rounded-full"
-              >
-                {rescheduleLoading ? 'Saving...' : 'Confirm Reschedule'}
-              </Button>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-2">
+              New Time
+            </label>
+            <select
+              value={rescheduleTime}
+              onChange={(e) => setRescheduleTime(e.target.value)}
+              className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            >
+              <option value="">Select a time</option>
+              {timeSlots.map(time => (
+                <option key={time} value={time}>{time}</option>
+              ))}
+            </select>
           </div>
         </div>
-      )}
+      </ConfirmationModal>
 
       {/* Cancel Confirmation Modal */}
-      {cancelModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-heading text-xl font-semibold text-red-600">
-                Cancel Booking
-              </h3>
-              <button
-                onClick={() => setCancelModal(null)}
-                className="text-stone-400 hover:text-stone-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                <p className="text-red-800 font-medium mb-2">
-                  Are you sure you want to cancel this booking?
-                </p>
-                <p className="text-red-600 text-sm">
-                  This action cannot be undone.
-                </p>
-              </div>
-
-              <div className="bg-stone-50 rounded-xl p-4">
-                <p className="font-medium text-green-900 mb-1">{cancelModal.service_name}</p>
-                <p className="text-stone-600 text-sm">
-                  {cancelModal.scheduled_date} at {cancelModal.scheduled_time}
-                </p>
-                <p className="text-stone-500 text-sm">
-                  {cancelModal.address}, {cancelModal.city}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setCancelModal(null)}
-                className="flex-1 rounded-full"
-              >
-                Keep Booking
-              </Button>
-              <Button
-                onClick={handleCancelConfirm}
-                disabled={cancelLoading}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-full"
-              >
-                {cancelLoading ? 'Cancelling...' : 'Yes, Cancel Booking'}
-              </Button>
-            </div>
+      <ConfirmationModal
+        open={!!cancelModal}
+        onOpenChange={(open) => !open && setCancelModal(null)}
+        title="Cancel Booking"
+        description="Are you sure you want to cancel this booking? This action cannot be undone."
+        confirmText="Yes, Cancel Booking"
+        cancelText="Keep Booking"
+        onConfirm={handleCancelConfirm}
+        loading={cancelLoading}
+        variant="destructive"
+      >
+        {cancelModal && (
+          <div className="bg-stone-50 rounded-xl p-4 my-2">
+            <p className="font-medium text-green-900 mb-1">{cancelModal.service_name}</p>
+            <p className="text-stone-600 text-sm">
+              {cancelModal.scheduled_date} at {cancelModal.scheduled_time}
+            </p>
+            <p className="text-stone-500 text-sm">
+              {cancelModal.address}, {cancelModal.city}
+            </p>
           </div>
-        </div>
-      )}
+        )}
+      </ConfirmationModal>
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
+import { getErrorMessage } from '../utils/errorUtils';
 import axios from 'axios';
 import { Sparkles, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 
@@ -28,7 +29,7 @@ const ForgotPasswordPage = () => {
             setSent(true);
             toast.success('Reset link sent! Check your email.');
         } catch (error) {
-            toast.error(error.response?.data?.detail || 'Failed to send reset link');
+            toast.error(getErrorMessage(error, 'Failed to send reset link'));
         } finally {
             setLoading(false);
         }
