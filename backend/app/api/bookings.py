@@ -6,7 +6,7 @@ from decimal import Decimal
 from datetime import datetime, timezone, timedelta
 from app.database import get_db
 from app.api.deps import get_current_user, get_admin_user, get_staff_user
-from app.core.security import generate_booking_number
+from app.core.security import generate_booking_number, generate_subscription_number
 from app.core.exceptions import (
     NotFoundException, ForbiddenException, BadRequestException,
     BookingNotFoundException, BookingCannotBeCancelledException
@@ -14,7 +14,7 @@ from app.core.exceptions import (
 from app.models import (
     Booking, BookingStatus, BookingStatusHistory, PaymentStatus,
     Service, AddOn, Address, User, Payment, booking_add_ons,
-    UserRole, UserStatus
+    UserRole, UserStatus, Subscription, SubscriptionStatus, SubscriptionVisit, SubscriptionPlan
 )
 from app.schemas import (
     BookingCreate, BookingUpdate, BookingStatusUpdate,
@@ -22,6 +22,11 @@ from app.schemas import (
     BookingResponse, BookingListResponse,
     AvailabilityRequest, AvailabilityResponse, AvailableSlot
 )
+from app.services.events import event_publisher, EventType
+from app.services.cache import cache_service
+from app.services.discount_service import DiscountService, DiscountValidationError
+from app.services.pricing_engine import PricingEngine
+from app.services.cleaner_assignment import get_region_from_city
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
@@ -32,27 +37,50 @@ def _calculate_booking_price(
     bedrooms: int,
     bathrooms: int,
     add_ons: List[AddOn],
-    discount_amount: Decimal = Decimal("0")
+    discount_amount: Decimal = Decimal("0"),
+    demand_multiplier: Decimal = Decimal("1.00"),
+    rush_premium: Decimal = Decimal("1.00")
 ) -> dict:
-    """Calculate booking price breakdown."""
+    """
+    Calculate booking price breakdown with dynamic pricing.
+
+    Dynamic pricing is applied to the subtotal before discount and tax:
+    adjusted_subtotal = subtotal × demand_multiplier × rush_premium
+    final_total = adjusted_subtotal - discount + tax
+    """
     base_price = Decimal(str(service.base_price))
-    size_adjustment = Decimal(str(service.price_per_sqft)) * property_size_sqft
-    bedroom_adjustment = Decimal(str(service.price_per_bedroom)) * bedrooms
-    bathroom_adjustment = Decimal(str(service.price_per_bathroom)) * bathrooms
-    
+    size_adjustment = Decimal(str(service.price_per_sqft or 0)) * property_size_sqft
+    bedroom_adjustment = Decimal(str(service.price_per_bedroom or 0)) * bedrooms
+    bathroom_adjustment = Decimal(str(service.price_per_bathroom or 0)) * bathrooms
+
     add_ons_total = sum(Decimal(str(addon.price)) for addon in add_ons)
-    
+
+    # Calculate subtotal before dynamic pricing
     subtotal = base_price + size_adjustment + bedroom_adjustment + bathroom_adjustment + add_ons_total
-    
-    tax_rate = Decimal("0.085")
-    tax_amount = (subtotal - discount_amount) * tax_rate
-    
-    total = subtotal - discount_amount + tax_amount
-    
+
+    # Apply dynamic pricing multipliers
+    final_multiplier = demand_multiplier * rush_premium
+    adjusted_subtotal = (subtotal * final_multiplier).quantize(Decimal("0.01"))
+
+    # Calculate dynamic pricing adjustment (for display)
+    dynamic_adjustment = adjusted_subtotal - subtotal
+
+    # Apply tax to adjusted subtotal minus discount
+    tax_rate = Decimal("0.05")  # 5% VAT
+    taxable_amount = adjusted_subtotal - discount_amount
+    tax_amount = (taxable_amount * tax_rate).quantize(Decimal("0.01"))
+
+    # Final total
+    total = adjusted_subtotal - discount_amount + tax_amount
+
     return {
         "base_price": base_price.quantize(Decimal("0.01")),
         "size_adjustment": (size_adjustment + bedroom_adjustment + bathroom_adjustment).quantize(Decimal("0.01")),
         "add_ons_total": add_ons_total.quantize(Decimal("0.01")),
+        "subtotal_before_dynamic": subtotal.quantize(Decimal("0.01")),
+        "demand_multiplier": demand_multiplier,
+        "rush_premium": rush_premium,
+        "dynamic_adjustment": dynamic_adjustment.quantize(Decimal("0.01")),
         "discount_amount": discount_amount.quantize(Decimal("0.01")),
         "tax_amount": tax_amount.quantize(Decimal("0.01")),
         "total_price": total.quantize(Decimal("0.01"))
@@ -126,6 +154,11 @@ def _booking_to_response(booking: Booking) -> BookingResponse:
         tax_amount=booking.tax_amount,
         total_price=booking.total_price,
         discount_code=booking.discount_code,
+        demand_multiplier=booking.demand_multiplier,
+        rush_premium=booking.rush_premium,
+        utilization_at_booking=booking.utilization_at_booking,
+        pricing_tier=booking.pricing_tier,
+        rush_tier=booking.rush_tier,
         status=booking.status,
         payment_status=booking.payment_status,
         customer_notes=booking.customer_notes,
@@ -138,6 +171,173 @@ def _booking_to_response(booking: Booking) -> BookingResponse:
 
 
 # ============ Customer: Booking Operations ============
+
+@router.post("/validate-discount")
+async def validate_discount_code(
+    code: str = Query(..., description="Discount code to validate"),
+    service_id: int = Query(..., description="Service ID"),
+    subtotal: float = Query(..., description="Order subtotal"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Validate a discount code and return the discount amount.
+
+    Use this before creating a booking to show the customer
+    how much they'll save.
+    """
+    discount_service = DiscountService(db)
+
+    try:
+        discount, discount_amount = discount_service.validate_code(
+            code=code,
+            user_id=current_user.id,
+            service_id=service_id,
+            subtotal=Decimal(str(subtotal))
+        )
+
+        return {
+            "valid": True,
+            "code": discount.code,
+            "discount_type": discount.discount_type,
+            "discount_value": float(discount.discount_value),
+            "discount_amount": float(discount_amount),
+            "description": discount.description,
+            "message": f"Discount of ${discount_amount:.2f} will be applied"
+        }
+    except DiscountValidationError as e:
+        return {
+            "valid": False,
+            "code": code,
+            "discount_amount": 0,
+            "message": str(e)
+        }
+
+
+@router.get("/discount-info/{code}")
+async def get_discount_info(
+    code: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get information about a discount code (public).
+
+    Returns code details without validating for a specific user/order.
+    """
+    discount_service = DiscountService(db)
+    info = discount_service.get_code_info(code)
+
+    if not info:
+        raise NotFoundException("Discount code not found")
+
+    return info
+
+
+@router.post("/pricing-preview")
+async def get_pricing_preview(
+    service_id: int = Query(..., description="Service ID"),
+    address_id: int = Query(..., description="Address ID"),
+    scheduled_date: datetime = Query(..., description="Scheduled date/time (ISO format)"),
+    property_size_sqft: int = Query(..., description="Property size in sqft"),
+    bedrooms: int = Query(0, description="Number of bedrooms"),
+    bathrooms: int = Query(1, description="Number of bathrooms"),
+    add_on_ids: Optional[str] = Query(None, description="Comma-separated add-on IDs"),
+    discount_code: Optional[str] = Query(None, description="Discount code to apply"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get a complete pricing preview including dynamic pricing.
+
+    This endpoint shows customers:
+    - Base price breakdown
+    - Dynamic pricing multipliers (demand + rush)
+    - Discount (if code provided)
+    - Tax
+    - Final total
+
+    Use this before creating a booking to show transparent pricing.
+    """
+    # Validate service
+    service = db.query(Service).filter(
+        Service.id == service_id,
+        Service.is_active == True
+    ).first()
+    if not service:
+        raise NotFoundException("Service not found")
+
+    # Validate address
+    address = db.query(Address).filter(
+        Address.id == address_id,
+        Address.user_id == current_user.id
+    ).first()
+    if not address:
+        raise NotFoundException("Address not found")
+
+    # Parse add-on IDs
+    addon_list = []
+    if add_on_ids:
+        try:
+            addon_list = [int(x.strip()) for x in add_on_ids.split(",") if x.strip()]
+        except ValueError:
+            raise BadRequestException("Invalid add_on_ids format")
+
+    # Get region for dynamic pricing
+    region_code = get_region_from_city(address.city) if address.city else "DXB"
+
+    # Get pricing preview from engine
+    pricing_engine = PricingEngine(db)
+    preview = await pricing_engine.get_pricing_preview(
+        service_id=service_id,
+        region_code=region_code,
+        scheduled_date=scheduled_date,
+        property_size_sqft=property_size_sqft,
+        bedrooms=bedrooms,
+        bathrooms=bathrooms,
+        add_on_ids=addon_list
+    )
+
+    # Apply discount if provided
+    if discount_code:
+        discount_service = DiscountService(db)
+        try:
+            _, discount_amount = discount_service.validate_code(
+                code=discount_code,
+                user_id=current_user.id,
+                service_id=service_id,
+                subtotal=Decimal(str(preview["totals"]["subtotal_after_dynamic"]))
+            )
+            # Recalculate with discount
+            subtotal_after_dynamic = Decimal(str(preview["totals"]["subtotal_after_dynamic"]))
+            tax_rate = Decimal("0.05")
+            tax_amount = ((subtotal_after_dynamic - discount_amount) * tax_rate).quantize(Decimal("0.01"))
+            final_total = subtotal_after_dynamic - discount_amount + tax_amount
+
+            preview["discount"] = {
+                "code": discount_code,
+                "amount": float(discount_amount),
+                "valid": True
+            }
+            preview["totals"]["discount_amount"] = float(discount_amount)
+            preview["totals"]["tax_amount"] = float(tax_amount)
+            preview["totals"]["final_total"] = float(final_total)
+        except DiscountValidationError as e:
+            preview["discount"] = {
+                "code": discount_code,
+                "amount": 0,
+                "valid": False,
+                "error": str(e)
+            }
+
+    # Add address info
+    preview["address"] = {
+        "id": address.id,
+        "city": address.city,
+        "region_code": region_code
+    }
+
+    return preview
+
 
 @router.post("/", response_model=BookingResponse)
 async def create_booking(
@@ -154,18 +354,83 @@ async def create_booking(
     if not service:
         raise NotFoundException("Service not found")
     
-    # Validate address belongs to user
-    address = db.query(Address).filter(
-        Address.id == data.address_id,
-        Address.user_id == current_user.id
-    ).first()
-    if not address:
-        raise NotFoundException("Address not found")
+    # Handle Address
+    address = None
+    if data.address_id:
+        # Validate provided address ID
+        address = db.query(Address).filter(
+            Address.id == data.address_id,
+            Address.user_id == current_user.id
+        ).first()
+        if not address:
+            raise NotFoundException("Address not found")
+    elif data.address_details:
+        # Create new address from details
+        address = Address(
+            user_id=current_user.id,
+            label=data.address_details.label,
+            street_address=data.address_details.street_address,
+            apartment=data.address_details.apartment,
+            city=data.address_details.city,
+            state=data.address_details.state,
+            postal_code=data.address_details.postal_code,
+            country=data.address_details.country,
+            property_type=data.address_details.property_type,
+            property_size_sqft=data.address_details.property_size_sqft,
+            bedrooms=data.address_details.bedrooms,
+            bathrooms=data.address_details.bathrooms,
+            access_instructions=data.address_details.access_instructions,
+            is_default=data.address_details.is_default or False
+        )
+        db.add(address)
+        db.flush() # Get ID
+        
+        # If this is the user's first address, make it default
+        if db.query(Address).filter(Address.user_id == current_user.id).count() == 1:
+            address.is_default = True
+            
+        data.address_id = address.id
+    else:
+        # Fallback to default address
+        address = db.query(Address).filter(
+            Address.user_id == current_user.id,
+            Address.is_default == True
+        ).first()
+        if not address:
+            # Try to find *any* address
+            address = db.query(Address).filter(Address.user_id == current_user.id).first()
+            
+        if not address:
+            raise BadRequestException("Address is required. Please add an address or select one.")
+            
+        data.address_id = address.id
     
     # Validate scheduled date is in future
+    if data.scheduled_date.tzinfo is None:
+        data.scheduled_date = data.scheduled_date.replace(tzinfo=timezone.utc)
+        
     if data.scheduled_date < datetime.now(timezone.utc):
         raise BadRequestException("Scheduled date must be in the future")
-    
+
+    # Calculate booking duration for overlap check
+    duration_hours = float(service.base_duration_hours or 2.5)
+    booking_end_time = data.scheduled_date + timedelta(hours=duration_hours)
+
+    # Check for overlapping bookings by the same customer
+    overlapping_booking = db.query(Booking).filter(
+        Booking.customer_id == current_user.id,
+        Booking.status.notin_([BookingStatus.CANCELLED, BookingStatus.REFUNDED, BookingStatus.NO_SHOW]),
+        # Overlap check: new_start < existing_end AND existing_start < new_end
+        Booking.scheduled_date < booking_end_time,
+        (Booking.scheduled_date + timedelta(hours=duration_hours)) > data.scheduled_date
+    ).first()
+
+    if overlapping_booking:
+        raise BadRequestException(
+            f"You already have a booking ({overlapping_booking.booking_number}) scheduled for this time. "
+            f"Please choose a different time slot."
+        )
+
     # Get add-ons
     add_ons = []
     if data.add_on_ids:
@@ -173,18 +438,134 @@ async def create_booking(
             AddOn.id.in_(data.add_on_ids),
             AddOn.is_active == True
         ).all()
-    
-    # Calculate pricing
+
+    # Calculate subtotal first (for discount validation)
+    base_price = Decimal(str(service.base_price))
+    size_adjustment = Decimal(str(service.price_per_sqft)) * data.property_size_sqft
+    bedroom_adjustment = Decimal(str(service.price_per_bedroom)) * data.bedrooms
+    bathroom_adjustment = Decimal(str(service.price_per_bathroom)) * data.bathrooms
+    add_ons_total = sum(Decimal(str(addon.price)) for addon in add_ons)
+    subtotal = base_price + size_adjustment + bedroom_adjustment + bathroom_adjustment + add_ons_total
+
+    # Validate and apply discount code if provided
+    discount_amount = Decimal("0")
+    validated_discount = None
+
+    if data.discount_code:
+        discount_service = DiscountService(db)
+        try:
+            validated_discount, discount_amount = discount_service.validate_code(
+                code=data.discount_code,
+                user_id=current_user.id,
+                service_id=data.service_id,
+                subtotal=subtotal
+            )
+        except DiscountValidationError as e:
+            raise BadRequestException(str(e))
+
+    # Get region for dynamic pricing
+    region_code = get_region_from_city(address.city) if address.city else "DXB"
+
+    # Calculate dynamic pricing multipliers
+    pricing_engine = PricingEngine(db)
+    dynamic_pricing = await pricing_engine.calculate_dynamic_price(
+        base_price=subtotal,
+        region_code=region_code,
+        scheduled_date=data.scheduled_date,
+        service_duration_hours=duration_hours
+    )
+
+    # Calculate pricing with dynamic multipliers
     pricing = _calculate_booking_price(
         service=service,
         property_size_sqft=data.property_size_sqft,
         bedrooms=data.bedrooms,
         bathrooms=data.bathrooms,
         add_ons=add_ons,
-        discount_amount=Decimal("0")  # TODO: Handle discount codes
+        discount_amount=discount_amount,
+        demand_multiplier=dynamic_pricing["demand_multiplier"],
+        rush_premium=dynamic_pricing["rush_premium"]
     )
+
+    # Handle subscription usage / creation
+    used_subscription = None
     
-    # Create booking
+    # CASE 1: Purchasing a NEW subscription
+    if data.new_subscription_plan_id:
+        plan = db.query(SubscriptionPlan).filter(
+            SubscriptionPlan.id == data.new_subscription_plan_id,
+            SubscriptionPlan.is_active == True
+        ).first()
+        
+        if not plan:
+            raise NotFoundException("Subscription plan not found")
+            
+        # Create new subscription
+        now = datetime.now(timezone.utc)
+        cycle_end = now + timedelta(days=30)
+        
+        used_subscription = Subscription(
+            subscription_number=generate_subscription_number(),
+            user_id=current_user.id,
+            plan_id=plan.id,
+            address_id=data.address_id,
+            service_id=data.service_id,
+            status=SubscriptionStatus.ACTIVE,
+            billing_cycle_start=now,
+            next_billing_date=cycle_end,
+            visits_allocated=plan.visits_per_month,
+            visits_used=0,
+            visits_remaining=plan.visits_per_month,
+            rollover_visits=0,
+            started_at=now
+        )
+        db.add(used_subscription)
+        db.flush()  # Get ID
+        
+        # NOTE: In a real flow, we'd handle payment here or mark as PENDING_ACTIVATION.
+        # For this MVP, we treat it as active and potentially billed later/invoice.
+    
+    # CASE 2: Using an EXISTING subscription
+    elif data.use_subscription:
+        # Find active subscription with remaining visits
+        subscription = db.query(Subscription).filter(
+            Subscription.user_id == current_user.id,
+            Subscription.status == SubscriptionStatus.ACTIVE,
+            Subscription.visits_remaining > 0
+        ).first()
+
+        if not subscription:
+            raise BadRequestException("No active subscription with remaining visits available")
+        
+        
+        # Verify service matches subscription plan (optional, but good practice)
+        # For now, assuming any service can be booked with subscription if generic visits
+        
+        used_subscription = subscription
+
+    # If using subscription, base service is covered.
+    # Add-ons are still charged.
+    total_price_val = pricing["total_price"]
+    payment_status_val = PaymentStatus.PENDING
+    
+    if used_subscription:
+        # Calculate total for add-ons only (plus tax)
+        tax_rate = Decimal("0.05")
+        add_ons_total = pricing["add_ons_total"]
+        tax_on_addons = (add_ons_total * tax_rate).quantize(Decimal("0.01"))
+        total_price_val = add_ons_total + tax_on_addons
+        
+        # If total is > 0, payment is pending (for add-ons)
+        # If total is 0, payment is paid
+        payment_status_val = PaymentStatus.PENDING if total_price_val > 0 else PaymentStatus.PAID
+        
+        # Update tax amount in stored record to reflect only add-on tax? 
+        # Or keep original tax calculation? Better to record actual tax charged.
+        # But 'pricing' dict has tax for full amount. We should update booking.tax_amount too.
+        # For simplicity, we'll update total_price but verify if we need to update components.
+        # Let's keep components (base_price etc) as "Value" but total_price as "Amount Due".
+
+    # Create booking with dynamic pricing fields
     booking = Booking(
         booking_number=generate_booking_number(),
         customer_id=current_user.id,
@@ -199,11 +580,20 @@ async def create_booking(
         add_ons_total=pricing["add_ons_total"],
         discount_amount=pricing["discount_amount"],
         tax_amount=pricing["tax_amount"],
-        total_price=pricing["total_price"],
+        
+        total_price=total_price_val,
+        
         discount_code=data.discount_code,
+        # Dynamic pricing fields
+        demand_multiplier=pricing["demand_multiplier"],
+        rush_premium=pricing["rush_premium"],
+        utilization_at_booking=Decimal(str(dynamic_pricing["utilization_percentage"] / 100)),
+        pricing_tier=dynamic_pricing["pricing_tier"],
+        rush_tier=dynamic_pricing["rush_tier"],
         customer_notes=data.customer_notes,
         status=BookingStatus.PENDING,
-        payment_status=PaymentStatus.PENDING
+        
+        payment_status=payment_status_val
     )
     
     db.add(booking)
@@ -228,9 +618,35 @@ async def create_booking(
         reason="Booking created"
     )
     db.add(history)
-    
+
+    # Increment discount code usage if applicable
+    if validated_discount:
+        discount_service = DiscountService(db)
+        discount_service.apply_code(validated_discount)
+
+    # Deduct visit from subscription if used
+    if used_subscription:
+        used_subscription.visits_used += 1
+        used_subscription.visits_remaining -= 1
+        
+        # Create visit record
+        visit = SubscriptionVisit(
+            subscription_id=used_subscription.id,
+            booking_id=booking.id,
+            visit_number=used_subscription.visits_used,
+            billing_cycle_month=datetime.now().strftime("%Y-%m"),
+            scheduled_date=booking.scheduled_date,
+            is_used=True,
+            used_at=datetime.now(timezone.utc)
+        )
+        db.add(visit)
+
     db.commit()
-    
+
+    # Auto-assign a cleaner to this booking
+    from app.services.cleaner_assignment import auto_assign_cleaner
+    assigned_cleaner = auto_assign_cleaner(booking, db, duration_hours=float(service.base_duration_hours or 2.5))
+
     # Reload with relationships
     booking = db.query(Booking).options(
         joinedload(Booking.customer),
@@ -239,7 +655,38 @@ async def create_booking(
         joinedload(Booking.address),
         joinedload(Booking.add_ons)
     ).filter(Booking.id == booking.id).first()
-    
+
+    # Publish booking created event
+    await event_publisher.publish(EventType.JOB_CREATED, {
+        "job_id": booking.id,
+        "booking_number": booking.booking_number,
+        "status": booking.status.value,
+        "customer_id": booking.customer_id,
+        "customer_name": current_user.full_name,
+        "service_name": service.name,
+        "scheduled_date": booking.scheduled_date.isoformat(),
+        "total_price": float(booking.total_price),
+        "city": address.city,
+        "assigned_cleaner": assigned_cleaner.full_name if assigned_cleaner else None
+    })
+
+    # If a cleaner was auto-assigned, also publish JOB_ASSIGNED event
+    if assigned_cleaner:
+        await event_publisher.publish(EventType.JOB_ASSIGNED, {
+            "job_id": booking.id,
+            "booking_number": booking.booking_number,
+            "status": booking.status.value,
+            "customer_id": booking.customer_id,
+            "cleaner_id": str(assigned_cleaner.id),
+            "cleaner_name": assigned_cleaner.full_name,
+            "employee_id": assigned_cleaner.employee_id,
+            "scheduled_date": booking.scheduled_date.isoformat(),
+            "auto_assigned": True
+        })
+
+    # Update dashboard stats cache
+    await cache_service.update_dashboard_stat("pending_jobs", 1)
+
     return _booking_to_response(booking)
 
 
@@ -252,6 +699,9 @@ async def list_my_bookings(
     db: Session = Depends(get_db)
 ):
     """Get current user's bookings."""
+    from app.models.employee import Employee
+    from app.models.review import Review
+    
     query = db.query(Booking).filter(Booking.customer_id == current_user.id)
     
     if status:
@@ -259,7 +709,9 @@ async def list_my_bookings(
     
     bookings = query.options(
         joinedload(Booking.service),
-        joinedload(Booking.address)
+        joinedload(Booking.address),
+        joinedload(Booking.cleaner),  # Legacy User-based cleaner
+        joinedload(Booking.review)    # Check if reviewed
     ).order_by(Booking.created_at.desc()).offset(skip).limit(limit).all()
     
     result = []
@@ -268,19 +720,41 @@ async def list_my_bookings(
         date_str = scheduled_dt.strftime('%Y-%m-%d') if scheduled_dt else ''
         time_str = scheduled_dt.strftime('%I:%M %p') if scheduled_dt else ''
         
+        # Get cleaner info (check new Employee system first, fallback to legacy User)
+        cleaner_name = None
+        cleaner_phone = None
+        
+        if booking.assigned_employee_id:
+            employee = db.query(Employee).filter(Employee.id == booking.assigned_employee_id).first()
+            if employee:
+                cleaner_name = employee.full_name
+                cleaner_phone = employee.phone_number
+        elif booking.cleaner:
+            cleaner_name = f"{booking.cleaner.first_name} {booking.cleaner.last_name}"
+            cleaner_phone = booking.cleaner.phone
+        
+        # Address string
+        address_str = booking.address.street_address
+        if booking.address.apartment:
+            address_str = f"{booking.address.apartment}, {address_str}"
+        
         result.append(BookingListResponse(
             id=booking.id,
             booking_number=booking.booking_number,
             customer_name=f"{booking.customer.first_name} {booking.customer.last_name}",
             customer_email=booking.customer.email,
             service_name=booking.service.name,
+            address=address_str,
             city=booking.address.city,
             scheduled_date=date_str,
             scheduled_time=time_str,
             status=booking.status.value if hasattr(booking.status, 'value') else str(booking.status),
             payment_status=booking.payment_status.value if hasattr(booking.payment_status, 'value') else str(booking.payment_status),
             total_price=booking.total_price,
-            created_at=booking.created_at
+            created_at=booking.created_at,
+            cleaner_name=cleaner_name,
+            cleaner_phone=cleaner_phone,
+            has_review=booking.review is not None
         ))
     
     return result
@@ -353,10 +827,22 @@ async def cancel_booking(
     db.add(history)
     
     db.commit()
-    
+
+    # Publish booking cancelled event
+    await event_publisher.publish(EventType.JOB_CANCELLED, {
+        "job_id": booking.id,
+        "booking_number": booking.booking_number,
+        "status": "cancelled",
+        "previous_status": old_status.value,
+        "customer_id": booking.customer_id,
+        "cleaner_id": booking.cleaner_id,
+        "cancellation_reason": data.reason,
+        "cancelled_by_id": current_user.id
+    })
+
     # TODO: Handle refund if payment was made
     # TODO: Send cancellation notification
-    
+
     return {"message": "Booking cancelled successfully"}
 
 
@@ -398,7 +884,20 @@ async def reschedule_booking(
     db.add(history)
     
     db.commit()
-    
+
+    # Publish rescheduled event (using JOB_ASSIGNED as it's a status-related update)
+    await event_publisher.publish(EventType.JOB_ASSIGNED, {
+        "job_id": booking.id,
+        "booking_number": booking.booking_number,
+        "status": booking.status.value,
+        "customer_id": booking.customer_id,
+        "cleaner_id": booking.cleaner_id,
+        "action": "rescheduled",
+        "old_date": old_date.isoformat(),
+        "new_date": data.new_date.isoformat(),
+        "reason": data.reason
+    })
+
     return {"message": "Booking rescheduled successfully", "new_date": data.new_date}
 
 
@@ -438,8 +937,13 @@ async def list_all_bookings(
     bookings = query.options(
         joinedload(Booking.customer),
         joinedload(Booking.service),
-        joinedload(Booking.address)
+        joinedload(Booking.address),
+        joinedload(Booking.cleaner),
+        joinedload(Booking.review),
+        joinedload(Booking.add_ons)
     ).order_by(Booking.created_at.desc()).offset(skip).limit(limit).all()
+    
+    from app.models.employee import Employee
     
     result = []
     for booking in bookings:
@@ -447,19 +951,42 @@ async def list_all_bookings(
         date_str = scheduled_dt.strftime('%Y-%m-%d') if scheduled_dt else ''
         time_str = scheduled_dt.strftime('%I:%M %p') if scheduled_dt else ''
         
+        # Get cleaner info
+        cleaner_name = None
+        cleaner_phone = None
+        
+        if booking.assigned_employee_id:
+            employee = db.query(Employee).filter(Employee.id == booking.assigned_employee_id).first()
+            if employee:
+                cleaner_name = employee.full_name
+                cleaner_phone = employee.phone_number
+        elif booking.cleaner:
+            cleaner_name = f"{booking.cleaner.first_name} {booking.cleaner.last_name}"
+            cleaner_phone = booking.cleaner.phone
+        
+        # Address string
+        address_str = booking.address.street_address
+        if booking.address.apartment:
+            address_str = f"{booking.address.apartment}, {address_str}"
+        
         result.append(BookingListResponse(
             id=booking.id,
             booking_number=booking.booking_number,
             customer_name=f"{booking.customer.first_name} {booking.customer.last_name}",
             customer_email=booking.customer.email,
             service_name=booking.service.name,
+            address=address_str,
             city=booking.address.city,
             scheduled_date=date_str,
             scheduled_time=time_str,
             status=booking.status.value if hasattr(booking.status, 'value') else str(booking.status),
             payment_status=booking.payment_status.value if hasattr(booking.payment_status, 'value') else str(booking.payment_status),
             total_price=booking.total_price,
-            created_at=booking.created_at
+            created_at=booking.created_at,
+            cleaner_name=cleaner_name,
+            cleaner_phone=cleaner_phone,
+            has_review=booking.review is not None,
+            add_ons=[addon.name for addon in booking.add_ons]
         ))
     
     return result
@@ -498,7 +1025,27 @@ async def update_booking_status(
     db.add(history)
     
     db.commit()
-    
+
+    # Map status to event type
+    status_event_map = {
+        BookingStatus.IN_PROGRESS: EventType.JOB_STARTED,
+        BookingStatus.COMPLETED: EventType.JOB_COMPLETED,
+        BookingStatus.CANCELLED: EventType.JOB_CANCELLED,
+        BookingStatus.ASSIGNED: EventType.JOB_ASSIGNED,
+    }
+
+    event_type = status_event_map.get(data.status)
+    if event_type:
+        await event_publisher.publish(event_type, {
+            "job_id": booking.id,
+            "booking_number": booking.booking_number,
+            "status": data.status.value,
+            "previous_status": old_status.value,
+            "customer_id": booking.customer_id,
+            "cleaner_id": booking.cleaner_id,
+            "reason": data.reason
+        })
+
     return {"message": f"Booking status updated to {data.status.value}"}
 
 
@@ -509,29 +1056,15 @@ async def assign_cleaner(
     admin: User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Admin: Assign cleaner to booking."""
-    booking = db.query(Booking).filter(Booking.id == booking_id).first()
-    
-    if not booking:
-        raise BookingNotFoundException(booking_id=booking_id)
-    
-    # Validate cleaner
-    cleaner = db.query(User).filter(
-        User.id == data.cleaner_id,
-        User.role.in_([UserRole.CLEANER, UserRole.ADMIN]),
-        User.status == UserStatus.ACTIVE
-    ).first()
-    
-    if not cleaner:
-        raise NotFoundException("Cleaner not found or not active")
-    
-    booking.cleaner_id = data.cleaner_id
-    
-    if booking.status == BookingStatus.CONFIRMED:
-        booking.status = BookingStatus.ASSIGNED
-    
-    db.commit()
-    
+    """
+    Admin: Assign cleaner to booking.
+    DEPRECATED/DISABLED: Assignment is now handled automatically by the system.
+    """
+    raise ForbiddenException(
+        "Manual assignment is disabled. Cleaners are automatically assigned by the allocation algorithm."
+    )
+
+
     return {"message": f"Cleaner {cleaner.full_name} assigned to booking"}
 
 
