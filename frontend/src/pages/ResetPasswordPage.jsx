@@ -87,7 +87,10 @@ const ResetPasswordPage = () => {
                         Your password has been successfully reset. You can now log in with your new password.
                     </p>
                     <Link to="/login">
-                        <Button className="bg-green-900 hover:bg-green-800 text-white rounded-full">
+                        <Button
+                            onClick={() => navigate('/login')}
+                            className="bg-green-950 hover:bg-green-900 text-white rounded-xl shadow-sm"
+                        >
                             Go to Login
                             <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
@@ -149,7 +152,7 @@ const ResetPasswordPage = () => {
                     <Button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-green-900 hover:bg-green-800 text-white rounded-full h-12"
+                        className="w-full bg-green-950 hover:bg-green-900 text-white rounded-xl h-12 shadow-md shadow-green-900/10"
                     >
                         {loading ? 'Resetting...' : 'Reset Password'}
                         <ArrowRight className="w-4 h-4 ml-2" />

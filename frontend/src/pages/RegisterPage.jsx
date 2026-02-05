@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -12,7 +12,10 @@ import { Sparkles, Mail, User, Phone, ArrowRight, MapPin, AlertCircle } from 'lu
 const RegisterPage = () => {
   const navigate = useNavigate();
   const { register, user } = useAuth();
-  const [name, setName] = useState('');
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: ''
+  });
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -25,15 +28,17 @@ const RegisterPage = () => {
 
   // Redirect if already logged in
   if (user) {
-    navigate('/dashboard');
-    return null;
+    return <Navigate to="/" replace />;
   }
 
   const validateForm = () => {
     const newErrors = {};
 
-    if (!name.trim()) {
-      newErrors.name = 'Name is required';
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+    }
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
     }
 
     if (!email.trim()) {
@@ -78,9 +83,10 @@ const RegisterPage = () => {
 
     setLoading(true);
     try {
-      await register(name, email, password, phone, address, city, postalCode);
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+      await register(fullName, email, password, phone, address, city, postalCode);
       toast.success('Account created successfully!');
-      navigate('/setup-property');
+      navigate('/');
     } catch (error) {
       toast.error(getErrorMessage(error, 'Registration failed'));
     } finally {
@@ -100,23 +106,24 @@ const RegisterPage = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 flex">
-      {/* Left side - Image */}
-      <div className="hidden lg:block lg:w-1/2 relative">
-        <div className="absolute inset-0 bg-green-900">
-          <img
-            src="https://images.unsplash.com/photo-1660993431493-0ffd7635f700?w=1200&h=1600&fit=crop"
-            alt="Cleaning supplies"
-            className="w-full h-full object-cover opacity-50"
-          />
-          <div className="absolute inset-0 flex items-center justify-center p-12">
-            <div className="text-center text-white">
-              <h2 className="font-heading text-4xl font-bold mb-4">
-                Join CleanUpCrew Today
-              </h2>
-              <p className="text-white/80 text-lg max-w-md">
-                Create an account to book cleanings, track appointments, and enjoy exclusive member benefits.
-              </p>
+      {/* Left Side - Image */}
+      <div className="hidden lg:block relative flex-1 bg-green-950 overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&q=80')] bg-cover bg-center opacity-40 mix-blend-overlay" />
+        <div className="absolute inset-0 bg-gradient-to-t from-green-950 via-green-950/50 to-transparent" />
+
+        <div className="relative h-full flex flex-col justify-end p-12 text-white">
+          <div className="mb-6">
+            <div className="w-12 h-12 bg-lime-400 rounded-full flex items-center justify-center mb-4">
+              <Sparkles className="w-6 h-6 text-green-950" />
             </div>
+            <h2 className="font-heading text-4xl font-bold leading-tight mb-4">
+              Join our community of clean spaces.
+            </h2>
+            <ul className="space-y-3 text-green-100/90 text-lg">
+              <li className="flex items-center gap-3"><span className="w-2 h-2 rounded-full bg-lime-400"></span>Trusted Professionals</li>
+              <li className="flex items-center gap-3"><span className="w-2 h-2 rounded-full bg-lime-400"></span>Flexible Scheduling</li>
+              <li className="flex items-center gap-3"><span className="w-2 h-2 rounded-full bg-lime-400"></span>Satisfaction Guaranteed</li>
+            </ul>
           </div>
         </div>
       </div>
@@ -125,13 +132,14 @@ const RegisterPage = () => {
       <div className="flex-1 flex flex-col justify-center px-6 py-12 lg:px-20">
         <div className="max-w-md w-full mx-auto">
           <Link to="/" className="flex items-center gap-2 mb-10">
-            <div className="w-10 h-10 rounded-xl bg-green-900 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-lime-400" />
+            <div className="w-12 h-12 rounded-2xl bg-green-950 flex items-center justify-center mb-4 shadow-lg shadow-green-900/20">
+              <Sparkles className="w-6 h-6 text-lime-400" />
             </div>
-            <span className="font-heading font-bold text-xl text-green-900">CleanUpCrew</span>
+            <h1 className="font-heading text-2xl font-bold text-green-950">Create Account</h1>
+            <p className="text-stone-500 mt-2">Join us for a cleaner, happier home</p>
           </Link>
 
-          <h1 className="font-heading text-3xl font-bold text-green-900 mb-2">
+          <h1 className="font-heading text-3xl font-bold text-green-950 mb-2">
             Create your account
           </h1>
           <p className="text-stone-600 mb-8">
@@ -139,24 +147,37 @@ const RegisterPage = () => {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <Label htmlFor="name">Full Name</Label>
-              <div className="relative mt-2">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="firstName" className="text-stone-600">First Name</Label>
                 <Input
-                  id="name"
-                  type="text"
-                  value={name}
+                  id="firstName"
+                  placeholder="John"
+                  value={formData.firstName}
                   onChange={(e) => {
-                    setName(e.target.value);
-                    if (errors.name) setErrors({ ...errors, name: '' });
+                    setFormData({ ...formData, firstName: e.target.value });
+                    if (errors.firstName) setErrors({ ...errors, firstName: '' });
                   }}
-                  placeholder="John Doe"
-                  className={`pl-10 ${errors.name ? 'border-red-500 focus:ring-red-500' : ''}`}
-                  data-testid="register-name"
+                  className="mt-1.5 h-12 rounded-xl border-stone-200 focus:border-green-600 focus:ring-green-600"
+                  required
                 />
+                <InputError error={errors.firstName} />
               </div>
-              <InputError error={errors.name} />
+              <div>
+                <Label htmlFor="lastName" className="text-stone-600">Last Name</Label>
+                <Input
+                  id="lastName"
+                  placeholder="Doe"
+                  value={formData.lastName}
+                  onChange={(e) => {
+                    setFormData({ ...formData, lastName: e.target.value });
+                    if (errors.lastName) setErrors({ ...errors, lastName: '' });
+                  }}
+                  className="mt-1.5 h-12 rounded-xl border-stone-200 focus:border-green-600 focus:ring-green-600"
+                  required
+                />
+                <InputError error={errors.lastName} />
+              </div>
             </div>
 
             <div>
@@ -302,7 +323,7 @@ const RegisterPage = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-green-900 hover:bg-green-800 text-white rounded-full h-12 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full bg-green-950 hover:bg-green-900 text-white rounded-xl h-12 font-medium transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-green-900/10"
               data-testid="register-submit"
             >
               {loading ? 'Creating account...' : 'Create Account'}

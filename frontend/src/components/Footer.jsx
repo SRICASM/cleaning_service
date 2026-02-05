@@ -1,88 +1,123 @@
 import { Link } from 'react-router-dom';
-import { Sparkles, Phone, Mail, MapPin, Facebook, Instagram, Twitter } from 'lucide-react';
+import { Sparkles, Phone, Mail, MapPin, Facebook, Instagram, Twitter, ArrowRight } from 'lucide-react';
 
 const Footer = () => {
   return (
-    <footer className="bg-green-900 text-white">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16">
+    <footer className="bg-gradient-to-b from-green-950 to-green-900 text-white relative overflow-hidden">
+      {/* Subtle Pattern */}
+      <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px]" />
+      {/* Decorative gradient orb */}
+      <div className="absolute -top-40 -right-40 w-80 h-80 bg-lime-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16 relative">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Brand */}
           <div>
-            <Link to="/" className="flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-lime-500 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
+            <Link to="/" className="flex items-center gap-3 mb-6 group">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center transition-all group-hover:bg-lime-500/20 group-hover:scale-105">
+                <Sparkles className="w-6 h-6 text-lime-400" />
               </div>
-              <span className="font-heading font-bold text-xl">CleanUpCrew</span>
+              <span className="font-heading font-bold text-xl tracking-tight">CleanUpCrew</span>
             </Link>
-            <p className="text-green-100/80 mb-6">
+            <p className="text-green-100/70 mb-6 leading-relaxed">
               Professional cleaning services that bring sparkle to your space. Trusted by thousands of happy customers.
             </p>
-            <div className="flex gap-4">
-              <a href="#" className="w-10 h-10 rounded-full bg-green-800 flex items-center justify-center hover:bg-lime-500 transition-colors" data-testid="footer-facebook">
-                <Facebook className="w-5 h-5" />
+            <div className="flex gap-3">
+              <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-lime-500 hover:border-lime-500 transition-all hover:scale-110" data-testid="footer-facebook">
+                <Facebook className="w-4 h-4" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-green-800 flex items-center justify-center hover:bg-lime-500 transition-colors" data-testid="footer-instagram">
-                <Instagram className="w-5 h-5" />
+              <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-lime-500 hover:border-lime-500 transition-all hover:scale-110" data-testid="footer-instagram">
+                <Instagram className="w-4 h-4" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-green-800 flex items-center justify-center hover:bg-lime-500 transition-colors" data-testid="footer-twitter">
-                <Twitter className="w-5 h-5" />
+              <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-lime-500 hover:border-lime-500 transition-all hover:scale-110" data-testid="footer-twitter">
+                <Twitter className="w-4 h-4" />
               </a>
             </div>
           </div>
 
           {/* Services */}
           <div>
-            <h3 className="font-heading font-semibold text-lg mb-6">Services</h3>
+            <h3 className="font-heading font-semibold text-lg mb-6 flex items-center gap-2">
+              Services
+              <span className="w-8 h-0.5 bg-gradient-to-r from-lime-400 to-transparent rounded-full" />
+            </h3>
             <ul className="space-y-3">
-              <li><Link to="/services" className="text-green-100/80 hover:text-lime-400 transition-colors">Standard Cleaning</Link></li>
-              <li><Link to="/services" className="text-green-100/80 hover:text-lime-400 transition-colors">Deep Cleaning</Link></li>
-              <li><Link to="/services" className="text-green-100/80 hover:text-lime-400 transition-colors">Move In/Out</Link></li>
-              <li><Link to="/services" className="text-green-100/80 hover:text-lime-400 transition-colors">Office Cleaning</Link></li>
-              <li><Link to="/services" className="text-green-100/80 hover:text-lime-400 transition-colors">Post-Construction</Link></li>
+              {['Standard Cleaning', 'Deep Cleaning', 'Move In/Out'].map((service) => (
+                <li key={service}>
+                  <Link to="/services" className="text-green-100/70 hover:text-lime-400 transition-colors flex items-center gap-2 group">
+                    <ArrowRight className="w-3 h-3 opacity-0 -ml-5 group-hover:opacity-100 group-hover:ml-0 transition-all" />
+                    {service}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h3 className="font-heading font-semibold text-lg mb-6">Quick Links</h3>
+            <h3 className="font-heading font-semibold text-lg mb-6 flex items-center gap-2">
+              Quick Links
+              <span className="w-8 h-0.5 bg-gradient-to-r from-lime-400 to-transparent rounded-full" />
+            </h3>
             <ul className="space-y-3">
-              <li><Link to="/about" className="text-green-100/80 hover:text-lime-400 transition-colors">About Us</Link></li>
-              <li><Link to="/services" className="text-green-100/80 hover:text-lime-400 transition-colors">Our Services</Link></li>
-              <li><Link to="/booking" className="text-green-100/80 hover:text-lime-400 transition-colors">Book Now</Link></li>
-              <li><Link to="/contact" className="text-green-100/80 hover:text-lime-400 transition-colors">Contact</Link></li>
-              <li><Link to="/login" className="text-green-100/80 hover:text-lime-400 transition-colors">My Account</Link></li>
+              {[
+                { name: 'About Us', to: '/about' },
+                { name: 'Our Services', to: '/services' },
+                { name: 'Book Now', to: '/booking' },
+                { name: 'Contact', to: '/contact' },
+                { name: 'My Account', to: '/login' }
+              ].map((link) => (
+                <li key={link.name}>
+                  <Link to={link.to} className="text-green-100/70 hover:text-lime-400 transition-colors flex items-center gap-2 group">
+                    <ArrowRight className="w-3 h-3 opacity-0 -ml-5 group-hover:opacity-100 group-hover:ml-0 transition-all" />
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
           {/* Contact */}
           <div>
-            <h3 className="font-heading font-semibold text-lg mb-6">Contact Us</h3>
+            <h3 className="font-heading font-semibold text-lg mb-6 flex items-center gap-2">
+              Contact Us
+              <span className="w-8 h-0.5 bg-gradient-to-r from-lime-400 to-transparent rounded-full" />
+            </h3>
             <ul className="space-y-4">
-              <li className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-lime-400 mt-0.5 flex-shrink-0" />
-                <span className="text-green-100/80">123 Clean Street, Suite 100<br />San Francisco, CA 94102</span>
+              <li className="flex items-start gap-3 group">
+                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-lime-500/20 transition-colors">
+                  <MapPin className="w-4 h-4 text-lime-400" />
+                </div>
+                <span className="text-green-100/70 text-sm leading-relaxed">123 Clean Street, Suite 100<br />San Francisco, CA 94102</span>
               </li>
-              <li className="flex items-center gap-3">
-                <Phone className="w-5 h-5 text-lime-400 flex-shrink-0" />
-                <a href="tel:+14155551234" className="text-green-100/80 hover:text-lime-400 transition-colors">(415) 555-1234</a>
+              <li className="flex items-center gap-3 group">
+                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-lime-500/20 transition-colors">
+                  <Phone className="w-4 h-4 text-lime-400" />
+                </div>
+                <a href="tel:+14155551234" className="text-green-100/70 hover:text-lime-400 transition-colors text-sm">(415) 555-1234</a>
               </li>
-              <li className="flex items-center gap-3">
-                <Mail className="w-5 h-5 text-lime-400 flex-shrink-0" />
-                <a href="mailto:hello@cleanupcrew.com" className="text-green-100/80 hover:text-lime-400 transition-colors">hello@cleanupcrew.com</a>
+              <li className="flex items-center gap-3 group">
+                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-lime-500/20 transition-colors">
+                  <Mail className="w-4 h-4 text-lime-400" />
+                </div>
+                <a href="mailto:hello@cleanupcrew.com" className="text-green-100/70 hover:text-lime-400 transition-colors text-sm">hello@cleanupcrew.com</a>
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-green-800">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-green-100/60 text-sm">
-              © {new Date().getFullYear()} CleanUpCrew Cleaning. All rights reserved.
-            </p>
-            <div className="flex gap-6 text-sm">
-              <a href="#" className="text-green-100/60 hover:text-lime-400 transition-colors">Privacy Policy</a>
-              <a href="#" className="text-green-100/60 hover:text-lime-400 transition-colors">Terms of Service</a>
-            </div>
+        {/* Divider */}
+        <div className="mt-12 mb-8 h-px bg-gradient-to-r from-transparent via-green-800 to-transparent" />
+
+        {/* Bottom */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-green-100/50 text-sm">
+            © {new Date().getFullYear()} CleanUpCrew Cleaning. All rights reserved.
+          </p>
+          <div className="flex gap-8 text-sm">
+            <a href="#" className="text-green-100/50 hover:text-lime-400 transition-colors">Privacy Policy</a>
+            <a href="#" className="text-green-100/50 hover:text-lime-400 transition-colors">Terms of Service</a>
           </div>
         </div>
       </div>

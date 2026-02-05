@@ -13,15 +13,29 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       const storedToken = localStorage.getItem('token');
+      const userType = localStorage.getItem('userType');
+
       if (storedToken) {
         try {
-          const response = await axios.get(`${API}/auth/me`, {
-            headers: { Authorization: `Bearer ${storedToken}` }
-          });
+          let response;
+          // Determine which endpoint to call based on user type
+          if (userType === 'EMPLOYEE') {
+            response = await axios.get(`${API}/auth/employee/me`, {
+              headers: { Authorization: `Bearer ${storedToken}` }
+            });
+          } else {
+            // Default to customer/admin endpoint
+            response = await axios.get(`${API}/auth/me`, {
+              headers: { Authorization: `Bearer ${storedToken}` }
+            });
+          }
+
           setUser(response.data);
           setToken(storedToken);
         } catch (error) {
+          console.error("Session restore failed", error);
           localStorage.removeItem('token');
+          localStorage.removeItem('userType');
           setToken(null);
           setUser(null);
         }
@@ -35,6 +49,7 @@ export const AuthProvider = ({ children }) => {
     const response = await axios.post(`${API}/auth/login`, { email, password });
     const { token: newToken, user: userData } = response.data;
     localStorage.setItem('token', newToken);
+    localStorage.setItem('userType', 'CUSTOMER'); // Assume customer/admin
     setToken(newToken);
     setUser(userData);
     return userData;
@@ -52,6 +67,7 @@ export const AuthProvider = ({ children }) => {
     });
     const { token: newToken, user: userData } = response.data;
     localStorage.setItem('token', newToken);
+    localStorage.setItem('userType', 'CUSTOMER');
     setToken(newToken);
     setUser(userData);
     return userData;
@@ -59,6 +75,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('userType');
     setToken(null);
     setUser(null);
   };
@@ -67,12 +85,24 @@ export const AuthProvider = ({ children }) => {
     Authorization: `Bearer ${token}`
   });
 
+  const otpLogin = (authData) => {
+    const { access_token, refresh_token, user: userData } = authData;
+    localStorage.setItem('token', access_token);
+    localStorage.setItem('refresh_token', refresh_token);
+    localStorage.setItem('userType', 'EMPLOYEE');
+    setToken(access_token);
+    setUser(userData);
+    return userData;
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
+      isAuthenticated: !!user,
       token,
       loading,
       login,
+      otpLogin,
       register,
       logout,
       getAuthHeaders,

@@ -218,6 +218,34 @@ async def delete_address(
     return {"message": "Address deleted"}
 
 
+@router.put("/me/addresses/{address_id}/default")
+async def set_default_address(
+    address_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Set an address as the default."""
+    address = db.query(Address).filter(
+        Address.id == address_id,
+        Address.user_id == current_user.id
+    ).first()
+    
+    if not address:
+        raise NotFoundException("Address not found")
+    
+    # Clear default from all other addresses
+    db.query(Address).filter(
+        Address.user_id == current_user.id,
+        Address.id != address_id
+    ).update({"is_default": False})
+    
+    # Set this address as default
+    address.is_default = True
+    db.commit()
+    
+    return {"message": "Default address updated"}
+
+
 # ============ Admin: User Management ============
 
 @router.get("/admin/customers")

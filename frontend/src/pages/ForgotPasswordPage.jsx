@@ -98,7 +98,7 @@ const ForgotPasswordPage = () => {
                     <Button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-green-900 hover:bg-green-800 text-white rounded-full h-12"
+                        className="w-full bg-green-950 hover:bg-green-900 text-white rounded-xl h-12 shadow-md shadow-green-900/10"
                     >
                         {loading ? 'Sending...' : 'Send Reset Link'}
                     </Button>

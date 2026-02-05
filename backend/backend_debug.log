@@ -1,0 +1,176 @@
+Redis not installed, using in-memory cache
+INFO:     Started server process [6298]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:51898 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51900 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51902 - "GET /api/users/me/addresses HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51904 - "GET /api/services HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51904 - "GET /api/services/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51906 - "POST /api/bookings/ HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+  + Exception Group Traceback (most recent call last):
+  |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/_utils.py", line 87, in collapse_excgroups
+  |     yield
+  |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 190, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |                ~~~~~~~~~~~~~~~~~~~~~~~^^
+  |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 783, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi
+    |     result = await app(  # type: ignore[func-returns-value]
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |         self.scope, self.receive, self.send
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     )
+    |     ^
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__
+    |     return await self.app(scope, receive, send)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/fastapi/applications.py", line 1054, in __call__
+    |     await super().__call__(scope, receive, send)
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/applications.py", line 123, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    |     raise exc
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 189, in __call__
+    |     with collapse_excgroups():
+    |          ~~~~~~~~~~~~~~~~~~^^
+    |   File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 162, in __exit__
+    |     self.gen.throw(value)
+    |     ~~~~~~~~~~~~~~^^^^^^^
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/_utils.py", line 93, in collapse_excgroups
+    |     raise exc
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 191, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/app/middleware/rate_limiter.py", line 195, in dispatch
+    |     response = await call_next(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 165, in call_next
+    |     raise app_exc
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 151, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 65, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app
+    |     raise exc
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/routing.py", line 756, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/routing.py", line 776, in app
+    |     await route.handle(scope, receive, send)
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/routing.py", line 297, in handle
+    |     await self.app(scope, receive, send)
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/routing.py", line 77, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app
+    |     raise exc
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/routing.py", line 72, in app
+    |     response = await func(request)
+    |                ^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/fastapi/routing.py", line 278, in app
+    |     raw_response = await run_endpoint_function(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |         dependant=dependant, values=values, is_coroutine=is_coroutine
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     )
+    |     ^
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/fastapi/routing.py", line 191, in run_endpoint_function
+    |     return await dependant.call(**values)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/app/api/bookings.py", line 409, in create_booking
+    |     if data.scheduled_date < datetime.now(timezone.utc):
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    | TypeError: can't compare offset-naive and offset-aware datetimes
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/applications.py", line 123, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 189, in __call__
+    with collapse_excgroups():
+         ~~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/_utils.py", line 93, in collapse_excgroups
+    raise exc
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 191, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/app/middleware/rate_limiter.py", line 195, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 165, in call_next
+    raise app_exc
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/base.py", line 151, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 65, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/routing.py", line 756, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/routing.py", line 776, in app
+    await route.handle(scope, receive, send)
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/routing.py", line 297, in handle
+    await self.app(scope, receive, send)
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/routing.py", line 77, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/starlette/routing.py", line 72, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/fastapi/routing.py", line 278, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        dependant=dependant, values=values, is_coroutine=is_coroutine
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/venv/lib/python3.13/site-packages/fastapi/routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shrijanshrestha/CLEANING/cleaning_service/backend/app/api/bookings.py", line 409, in create_booking
+    if data.scheduled_date < datetime.now(timezone.utc):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: can't compare offset-naive and offset-aware datetimes

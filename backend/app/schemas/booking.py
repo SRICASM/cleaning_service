@@ -27,16 +27,25 @@ class PaymentStatus(str, Enum):
 
 # ============ Booking Schemas ============
 
+from app.schemas.user import AddressCreate
+
 class BookingCreate(BaseModel):
     service_id: int
-    address_id: int
+    address_id: Optional[int] = None
+    address_details: Optional[AddressCreate] = None
     scheduled_date: datetime
-    property_size_sqft: int = Field(..., ge=100, le=50000)
+    property_size_sqft: Optional[int] = Field(None, ge=100, le=50000)
     bedrooms: int = Field(default=0, ge=0)
     bathrooms: int = Field(default=1, ge=1)
     add_on_ids: List[int] = []
     customer_notes: Optional[str] = None
     discount_code: Optional[str] = None
+    use_subscription: bool = False
+    new_subscription_plan_id: Optional[int] = None
+    booking_type: Optional[str] = "single"
+    recurrence_pattern: Optional[dict] = None
+    duration_minutes: Optional[int] = None
+    payment_method: Optional[str] = "card"
 
 
 class BookingUpdate(BaseModel):
@@ -145,6 +154,13 @@ class BookingResponse(BaseModel):
     tax_amount: Decimal
     total_price: Decimal
     discount_code: Optional[str]
+
+    # Dynamic pricing fields
+    demand_multiplier: Optional[Decimal] = None
+    rush_premium: Optional[Decimal] = None
+    utilization_at_booking: Optional[Decimal] = None
+    pricing_tier: Optional[str] = None
+    rush_tier: Optional[str] = None
     
     # Status
     status: BookingStatus
@@ -169,6 +185,7 @@ class BookingListResponse(BaseModel):
     customer_name: str
     customer_email: str
     service_name: str
+    address: str
     city: str
     scheduled_date: str  # Formatted date string
     scheduled_time: str  # Formatted time string
@@ -176,6 +193,11 @@ class BookingListResponse(BaseModel):
     payment_status: str  # String value of enum
     total_price: Decimal
     created_at: datetime
+    # Cleaner info (if assigned)
+    cleaner_name: Optional[str] = None
+    cleaner_phone: Optional[str] = None
+    has_review: bool = False  # Whether customer has already reviewed
+    add_ons: List[str] = []
 
 
 # ============ Time Slot Schemas ============

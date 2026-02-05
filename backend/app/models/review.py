@@ -83,18 +83,30 @@ class AuditLog(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     
+    # Actor information
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    action = Column(String(100), nullable=False, index=True)
-    entity_type = Column(String(50), nullable=False, index=True)  # user, booking, payment, etc.
-    entity_id = Column(Integer, nullable=True)
+    actor_type = Column(String(20), default="user")  # user, system, admin, cleaner
     
-    # Request info
+    # Action details
+    action = Column(String(100), nullable=False, index=True)
+    entity_type = Column(String(50), nullable=False, index=True)  # booking, user, payment, etc.
+    entity_id = Column(Integer, nullable=True, index=True)
+    
+    # State changes (JSONB for flexible schema)
+    previous_state = Column(Text, nullable=True)  # JSON string
+    new_state = Column(Text, nullable=True)       # JSON string
+    
+    # Additional context
+    reason = Column(Text, nullable=True)
+    extra_data = Column(Text, nullable=True)  # JSON - IP, user agent, idempotency key, etc.
+    
+    # Request info (legacy fields)
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(String(500), nullable=True)
     
-    # Change details
-    old_values = Column(Text, nullable=True)  # JSON
-    new_values = Column(Text, nullable=True)  # JSON
+    # Legacy fields (kept for backward compatibility)
+    old_values = Column(Text, nullable=True)  # JSON - deprecated, use previous_state
+    new_values = Column(Text, nullable=True)  # JSON - deprecated, use new_state
     
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 

@@ -67,7 +67,7 @@ const ProfilePage = () => {
 
     const fetchAddresses = async () => {
         try {
-            const response = await axios.get(`${API}/users/addresses`, {
+            const response = await axios.get(`${API}/users/me/addresses`, {
                 headers: getAuthHeaders()
             });
             setAddresses(response.data);
@@ -131,7 +131,7 @@ const ProfilePage = () => {
         setAddressSaving(true);
         try {
             if (editingAddress) {
-                await axios.put(`${API}/users/addresses/${editingAddress.id}`, {
+                await axios.put(`${API}/users/me/addresses/${editingAddress.id}`, {
                     label: addressForm.label,
                     address: addressForm.address,
                     city: addressForm.city,
@@ -141,7 +141,7 @@ const ProfilePage = () => {
                 });
                 toast.success('Address updated');
             } else {
-                await axios.post(`${API}/users/addresses`, addressForm, {
+                await axios.post(`${API}/users/me/addresses`, addressForm, {
                     headers: getAuthHeaders()
                 });
                 toast.success('Address added');
@@ -159,7 +159,7 @@ const ProfilePage = () => {
         if (!window.confirm('Are you sure you want to delete this address?')) return;
 
         try {
-            await axios.delete(`${API}/users/addresses/${addressId}`, {
+            await axios.delete(`${API}/users/me/addresses/${addressId}`, {
                 headers: getAuthHeaders()
             });
             toast.success('Address deleted');
@@ -171,7 +171,7 @@ const ProfilePage = () => {
 
     const handleSetDefault = async (addressId) => {
         try {
-            await axios.put(`${API}/users/addresses/${addressId}/default`, {}, {
+            await axios.put(`${API}/users/me/addresses/${addressId}/default`, {}, {
                 headers: getAuthHeaders()
             });
             toast.success('Default address updated');
@@ -354,7 +354,7 @@ const ProfilePage = () => {
                             <Button
                                 onClick={handleProfileSave}
                                 disabled={loading}
-                                className="bg-green-900 hover:bg-green-800 text-white rounded-full px-8"
+                                className="bg-green-950 hover:bg-green-900 text-white rounded-xl px-8 shadow-sm"
                             >
                                 {loading ? 'Saving...' : 'Save Changes'}
                             </Button>
@@ -374,7 +374,7 @@ const ProfilePage = () => {
                             </div>
                             <Button
                                 onClick={() => openAddressModal()}
-                                className="bg-green-900 hover:bg-green-800 text-white rounded-full"
+                                className="bg-green-950 hover:bg-green-900 text-white rounded-xl shadow-sm"
                             >
                                 <Plus className="w-4 h-4 mr-2" />
                                 Add Address
@@ -547,7 +547,7 @@ const ProfilePage = () => {
                             <Button
                                 onClick={handleAddressSave}
                                 disabled={addressSaving}
-                                className="flex-1 bg-green-900 hover:bg-green-800 text-white rounded-full"
+                                className="flex-1 bg-green-950 hover:bg-green-900 text-white rounded-xl shadow-sm"
                             >
                                 {addressSaving ? 'Saving...' : (editingAddress ? 'Update' : 'Add Address')}
                             </Button>

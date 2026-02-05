@@ -125,6 +125,26 @@ class DiscountCode(Base):
     
     # Service restrictions
     applicable_service_ids = Column(Text, nullable=True)  # JSON array or comma-separated
-    
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ProcessedWebhookEvent(Base):
+    """
+    Track processed webhook events for idempotency.
+
+    Prevents duplicate processing of the same webhook event
+    if Stripe sends it multiple times.
+    """
+    __tablename__ = "processed_webhook_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_id = Column(String(100), unique=True, nullable=False, index=True)  # Stripe event ID
+    event_type = Column(String(100), nullable=False)  # e.g., "checkout.session.completed"
+    processed_at = Column(DateTime(timezone=True), server_default=func.now())
+    payload_hash = Column(String(64), nullable=True)  # Optional: SHA256 of payload for verification
+
+    # Result of processing
+    status = Column(String(20), default="processed")  # processed, skipped, failed
+    error_message = Column(Text, nullable=True)

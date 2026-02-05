@@ -7,10 +7,10 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import axios from 'axios';
-import { 
-  Phone, 
-  Mail, 
-  MapPin, 
+import {
+  Phone,
+  Mail,
+  MapPin,
   Clock,
   Send,
   MessageSquare
@@ -79,7 +79,7 @@ const ContactPage = () => {
   return (
     <div className="min-h-screen bg-stone-50">
       <Navbar />
-      
+
       {/* Hero */}
       <section className="pt-32 pb-16 bg-gradient-to-b from-green-50 to-stone-50">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 text-center">
@@ -204,7 +204,7 @@ const ContactPage = () => {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-green-900 hover:bg-green-800 text-white rounded-full h-12"
+                  className="w-full bg-green-950 hover:bg-green-900 text-white rounded-xl h-12 shadow-md shadow-green-900/10"
                   data-testid="contact-submit"
                 >
                   {loading ? 'Sending...' : 'Send Message'}
@@ -239,7 +239,7 @@ const ContactPage = () => {
           <p className="text-stone-600 mb-10">
             Quick answers to common questions about our services.
           </p>
-          
+
           <div className="space-y-4 text-left">
             {[
               { q: 'How do I book a cleaning?', a: 'Simply click "Book Now" and follow our easy 4-step booking process. Select your service, enter property details, choose a date/time, and complete payment.' },

@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from app.config import settings
 
 # Create engine with connection pooling
+# Create engine with connection pooling
 engine = create_engine(
     settings.DATABASE_URL,
     pool_size=settings.DB_POOL_SIZE,

@@ -111,12 +111,11 @@ const BookingSuccessPage = () => {
             <p className="text-stone-600 mb-8">
               Your payment is being processed. You'll receive a confirmation email shortly.
             </p>
-            <Link to="/dashboard">
-              <Button className="bg-green-900 hover:bg-green-800 text-white rounded-full" data-testid="pending-dashboard">
+            <div className="space-x-4">
+              <Button onClick={() => navigate('/dashboard')} className="bg-green-950 hover:bg-green-900 text-white rounded-xl shadow-sm" data-testid="pending-dashboard">
                 Go to Dashboard
-                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
-            </Link>
+            </div>
           </>
         )}
 
@@ -131,12 +130,10 @@ const BookingSuccessPage = () => {
             <p className="text-stone-600 mb-8">
               We couldn't verify your payment. Please check your dashboard or contact support.
             </p>
-            <div className="flex flex-col gap-3">
-              <Link to="/dashboard">
-                <Button className="w-full bg-green-900 hover:bg-green-800 text-white rounded-full" data-testid="error-dashboard">
-                  Check Dashboard
-                </Button>
-              </Link>
+            <div className="space-y-3">
+              <Button onClick={() => navigate('/dashboard')} className="w-full bg-green-950 hover:bg-green-900 text-white rounded-xl shadow-sm" data-testid="error-dashboard">
+                Go to Dashboard
+              </Button>
               <Link to="/contact">
                 <Button variant="outline" className="w-full rounded-full" data-testid="error-contact">
                   Contact Support

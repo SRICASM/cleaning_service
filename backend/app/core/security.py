@@ -105,3 +105,10 @@ def generate_invoice_number() -> str:
     timestamp = datetime.now().strftime("%Y%m")
     random_part = secrets.token_hex(2).upper()
     return f"INV-{timestamp}-{random_part}"
+
+
+def generate_subscription_number() -> str:
+    """Generate a unique subscription number."""
+    timestamp = datetime.now().strftime("%y%m")
+    random_part = secrets.token_hex(2).upper()
+    return f"SUB{timestamp}{random_part}"

@@ -67,7 +67,7 @@ const AboutPage = () => {
   return (
     <div className="min-h-screen bg-stone-50">
       <Navbar />
-      
+
       {/* Hero */}
       <section className="pt-32 pb-20 bg-gradient-to-b from-green-50 to-stone-50">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
@@ -83,7 +83,7 @@ const AboutPage = () => {
             </div>
             <div className="relative">
               <div className="rounded-3xl overflow-hidden shadow-xl">
-                <img 
+                <img
                   src="https://images.unsplash.com/photo-1713863574460-ccd3bbb47f1e?w=600&h=500&fit=crop"
                   alt="Our team at work"
                   className="w-full h-auto object-cover"
@@ -95,7 +95,7 @@ const AboutPage = () => {
       </section>
 
       {/* Stats */}
-      <section className="py-16 bg-green-900">
+      <section className="py-16 bg-green-950 text-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
@@ -114,7 +114,7 @@ const AboutPage = () => {
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="order-2 lg:order-1">
               <div className="rounded-3xl overflow-hidden shadow-xl">
-                <img 
+                <img
                   src="https://images.unsplash.com/photo-1660993431493-0ffd7635f700?w=600&h=500&fit=crop"
                   alt="Professional cleaning"
                   className="w-full h-auto object-cover"
@@ -151,7 +151,7 @@ const AboutPage = () => {
               What We Stand For
             </h2>
           </div>
-          
+
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {values.map((value, index) => (
               <div key={index} className="feature-card text-center">
@@ -184,12 +184,12 @@ const AboutPage = () => {
               Meet the People Behind CleanUpCrew
             </h2>
           </div>
-          
+
           <div className="grid md:grid-cols-3 gap-8">
             {team.map((member, index) => (
               <div key={index} className="bg-white rounded-3xl p-8 border border-stone-100 shadow-soft text-center">
-                <img 
-                  src={member.image} 
+                <img
+                  src={member.image}
                   alt={member.name}
                   className="w-32 h-32 rounded-full mx-auto mb-6 object-cover"
                 />
@@ -205,7 +205,8 @@ const AboutPage = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-20 bg-green-900">
+      <section className="py-20 bg-green-950 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:20px_20px]" />
         <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
           <Sparkles className="w-12 h-12 text-lime-400 mx-auto mb-6" />
           <h2 className="font-heading text-3xl lg:text-4xl font-bold text-white mb-6">

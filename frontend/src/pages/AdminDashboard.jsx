@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useWebSocket } from '../hooks/useWebSocket';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import {
@@ -17,6 +18,7 @@ import {
   LayoutDashboard,
   Calendar,
   Users,
+  UserCog,
   Settings,
   LogOut,
   Search,
@@ -30,6 +32,7 @@ import {
   Phone,
   MapPin
 } from 'lucide-react';
+import EmployeeManagement from '../components/admin/EmployeeManagement';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -42,6 +45,7 @@ const AdminSidebar = () => {
   const navItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
     { name: 'Bookings', path: '/admin/bookings', icon: Calendar },
+    { name: 'Employees', path: '/admin/employees', icon: UserCog },
     { name: 'Customers', path: '/admin/customers', icon: Users },
     { name: 'Messages', path: '/admin/messages', icon: Mail },
   ];
@@ -89,27 +93,34 @@ const AdminSidebar = () => {
 // Dashboard Overview
 const DashboardOverview = () => {
   const { getAuthHeaders } = useAuth();
+  const { refreshTrigger } = useRefreshTrigger();
   const [stats, setStats] = useState(null);
   const [recentBookings, setRecentBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [statsRes, bookingsRes] = await Promise.all([
-          axios.get(`${API}/bookings/admin/stats`, { headers: getAuthHeaders() }),
-          axios.get(`${API}/bookings/admin/all`, { headers: getAuthHeaders() })
-        ]);
-        setStats(statsRes.data);
-        setRecentBookings(bookingsRes.data.slice(0, 5));
-      } catch (error) {
-        toast.error('Failed to load dashboard data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+  const fetchData = useCallback(async () => {
+    try {
+      const [statsRes, bookingsRes] = await Promise.all([
+        axios.get(`${API}/bookings/admin/stats`, { headers: getAuthHeaders() }),
+        axios.get(`${API}/bookings/admin/all`, { headers: getAuthHeaders() })
+      ]);
+      setStats(statsRes.data);
+      setRecentBookings(bookingsRes.data.slice(0, 5));
+    } catch (error) {
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
   }, [getAuthHeaders]);
+
+  // Initial load and refresh on trigger
+  useEffect(() => {
+    fetchData();
+
+    // Polling backup (every 10s)
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, [fetchData, refreshTrigger]);
 
   if (loading) {
     return (
@@ -154,7 +165,8 @@ const DashboardOverview = () => {
             <thead>
               <tr>
                 <th>Customer</th>
-                <th>Service</th>
+                <th>Service & Add-ons</th>
+                <th>Cleaner</th>
                 <th>Date</th>
                 <th>Status</th>
                 <th>Amount</th>
@@ -169,7 +181,27 @@ const DashboardOverview = () => {
                       <p className="text-stone-500 text-xs">{booking.customer_email}</p>
                     </div>
                   </td>
-                  <td>{booking.service_name}</td>
+                  <td>
+                    <div>
+                      <p>{booking.service_name}</p>
+                      {booking.add_ons && booking.add_ons.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {booking.add_ons.map((addon, idx) => (
+                            <span key={idx} className="text-xs bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded">
+                              + {addon}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    {booking.cleaner_name ? (
+                      <span className="font-medium text-green-700">{booking.cleaner_name}</span>
+                    ) : (
+                      <span className="text-stone-400 italic text-xs">Unassigned</span>
+                    )}
+                  </td>
                   <td>{booking.scheduled_date}</td>
                   <td>
                     <span className={`badge badge-${booking.status}`}>
@@ -190,6 +222,7 @@ const DashboardOverview = () => {
 // Bookings Management
 const BookingsManagement = () => {
   const { getAuthHeaders } = useAuth();
+  const { refreshTrigger } = useRefreshTrigger();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -211,9 +244,14 @@ const BookingsManagement = () => {
     }
   }, [statusFilter, getAuthHeaders]);
 
+  // Refresh on trigger or filter change
   useEffect(() => {
     fetchBookings();
-  }, [fetchBookings]);
+
+    // Polling backup (every 10s)
+    const interval = setInterval(fetchBookings, 10000);
+    return () => clearInterval(interval);
+  }, [fetchBookings, refreshTrigger]);
 
   const updateStatus = async (bookingId, newStatus) => {
     try {
@@ -276,7 +314,8 @@ const BookingsManagement = () => {
               <thead>
                 <tr>
                   <th>Customer</th>
-                  <th>Service</th>
+                  <th>Service & Add-ons</th>
+                  <th>Cleaner</th>
                   <th>Location</th>
                   <th>Schedule</th>
                   <th>Status</th>
@@ -294,7 +333,30 @@ const BookingsManagement = () => {
                         <p className="text-stone-500 text-xs">{booking.customer_email}</p>
                       </div>
                     </td>
-                    <td>{booking.service_name}</td>
+                    <td>
+                      <div>
+                        <p>{booking.service_name}</p>
+                        {booking.add_ons && booking.add_ons.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {booking.add_ons.map((addon, idx) => (
+                              <span key={idx} className="text-xs bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded">
+                                + {addon}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      {booking.cleaner_name ? (
+                        <div>
+                          <p className="font-medium text-green-700">{booking.cleaner_name}</p>
+                          <p className="text-stone-500 text-xs">{booking.cleaner_phone}</p>
+                        </div>
+                      ) : (
+                        <span className="text-stone-400 italic text-sm">Unassigned</span>
+                      )}
+                    </td>
                     <td>
                       <div className="text-sm">
                         <p>{booking.city}</p>
@@ -349,25 +411,27 @@ const BookingsManagement = () => {
 // Customers Management
 const CustomersManagement = () => {
   const { getAuthHeaders } = useAuth();
+  const { refreshTrigger } = useRefreshTrigger();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const response = await axios.get(`${API}/users/admin/customers`, {
-          headers: getAuthHeaders()
-        });
-        setCustomers(response.data);
-      } catch (error) {
-        toast.error('Failed to load customers');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCustomers();
+  const fetchCustomers = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API}/users/admin/customers`, {
+        headers: getAuthHeaders()
+      });
+      setCustomers(response.data);
+    } catch (error) {
+      toast.error('Failed to load customers');
+    } finally {
+      setLoading(false);
+    }
   }, [getAuthHeaders]);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers, refreshTrigger]);
 
   const filteredCustomers = customers.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -511,20 +575,72 @@ const MessagesManagement = () => {
   );
 };
 
+// Context for refresh triggers (WebSocket events)
+const RefreshContext = createContext({ refreshTrigger: 0 });
+
+const useRefreshTrigger = () => useContext(RefreshContext);
+
 // Main Admin Dashboard
 const AdminDashboard = () => {
+  const { token } = useAuth();
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // WebSocket connection for real-time updates
+  const { isConnected } = useWebSocket('/api/ws/admin', {
+    token,
+    autoConnect: true,
+    autoReconnect: true,
+    onMessage: (data) => {
+      // Trigger refresh when relevant events arrive
+      const refreshEvents = [
+        'job.created', 'job.assigned', 'job.started', 'job.completed',
+        'job.cancelled', 'job.failed', 'cleaner.status_changed',
+        'cleaner.online', 'cleaner.offline', 'stats.updated'
+      ];
+
+      if (data.type && refreshEvents.includes(data.type)) {
+        console.log('WebSocket event received, triggering refresh:', data.type);
+        setRefreshTrigger(prev => prev + 1);
+
+        // Show toast for important events
+        if (data.type === 'job.created') {
+          toast.info('New booking created!');
+        } else if (data.type === 'job.completed') {
+          toast.success('A job was completed!');
+        } else if (data.type === 'job.cancelled') {
+          toast.warning('A booking was cancelled');
+        }
+      }
+    },
+    onConnect: () => {
+      console.log('Admin WebSocket connected');
+    },
+    onDisconnect: () => {
+      console.log('Admin WebSocket disconnected');
+    }
+  });
+
   return (
-    <div className="min-h-screen bg-stone-50 flex">
-      <AdminSidebar />
-      <main className="flex-1 ml-64 p-8">
-        <Routes>
-          <Route index element={<DashboardOverview />} />
-          <Route path="bookings" element={<BookingsManagement />} />
-          <Route path="customers" element={<CustomersManagement />} />
-          <Route path="messages" element={<MessagesManagement />} />
-        </Routes>
-      </main>
-    </div>
+    <RefreshContext.Provider value={{ refreshTrigger, isConnected }}>
+      <div className="min-h-screen bg-stone-50 flex">
+        <AdminSidebar />
+        <main className="flex-1 ml-64 p-8">
+          {/* WebSocket connection indicator */}
+          <div className={`fixed top-4 right-4 px-3 py-1 rounded-full text-xs font-medium ${isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+            }`}>
+            {isConnected ? '● Live' : '○ Offline'}
+          </div>
+
+          <Routes>
+            <Route index element={<DashboardOverview />} />
+            <Route path="bookings" element={<BookingsManagement />} />
+            <Route path="employees" element={<EmployeeManagement />} />
+            <Route path="customers" element={<CustomersManagement />} />
+            <Route path="messages" element={<MessagesManagement />} />
+          </Routes>
+        </main>
+      </div>
+    </RefreshContext.Provider>
   );
 };
 

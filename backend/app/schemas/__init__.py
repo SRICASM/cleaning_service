@@ -31,6 +31,14 @@ from app.schemas.review import (
     ContactMessageCreate, ContactMessageUpdate, ContactMessageReply, ContactMessageResponse,
     NotificationResponse, NotificationMarkRead
 )
+from app.schemas.subscription import (
+    SubscriptionPlanCreate, SubscriptionPlanUpdate, SubscriptionPlanResponse,
+    SubscriptionCreate, SubscriptionUpdate, SubscriptionResponse, SubscriptionSummary,
+    SubscriptionListResponse, SubscriptionPause, SubscriptionResume, SubscriptionCancel,
+    SubscriptionPlanChangeRequest, SubscriptionVisitResponse, SubscriptionBillingResponse,
+    SubscriptionCalendarResponse, ScheduleVisitRequest, SubscriptionStats,
+    SubscriptionStatus, BillingStatus, VisitSlot, SubscriptionPackagePurchase
+)
 
 __all__ = [
     # User
@@ -61,4 +69,11 @@ __all__ = [
     "ReviewCreate", "ReviewUpdate", "ReviewResponse", "ReviewResponseAdd", "ReviewStats",
     "ContactMessageCreate", "ContactMessageUpdate", "ContactMessageReply", "ContactMessageResponse",
     "NotificationResponse", "NotificationMarkRead",
+    # Subscription
+    "SubscriptionPlanCreate", "SubscriptionPlanUpdate", "SubscriptionPlanResponse",
+    "SubscriptionCreate", "SubscriptionUpdate", "SubscriptionResponse", "SubscriptionSummary",
+    "SubscriptionListResponse", "SubscriptionPause", "SubscriptionResume", "SubscriptionCancel",
+    "SubscriptionPlanChangeRequest", "SubscriptionVisitResponse", "SubscriptionBillingResponse",
+    "SubscriptionCalendarResponse", "ScheduleVisitRequest", "SubscriptionStats",
+    "SubscriptionStatus", "BillingStatus", "VisitSlot", "SubscriptionPackagePurchase",
 ]

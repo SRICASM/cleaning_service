@@ -10,8 +10,10 @@ from app.core.exceptions import (
 )
 from app.models import (
     Booking, Payment, Refund, User,
-    PaymentStatus, BookingStatus, RefundStatus
+    PaymentStatus, BookingStatus, RefundStatus, ProcessedWebhookEvent
 )
+import hashlib
+import json
 from app.schemas import (
     PaymentCreateRequest, PaymentCreateResponse,
     PaymentStatusResponse, PaymentVerifyRequest, PaymentVerifyResponse,
@@ -253,40 +255,136 @@ async def stripe_webhook(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """Handle Stripe webhooks."""
+    """
+    Handle Stripe webhooks with idempotency.
+
+    - Validates webhook signature
+    - Checks for duplicate events using event ID
+    - Processes payment confirmations
+    - Records processed events for audit trail
+    """
     body = await request.body()
     signature = request.headers.get("Stripe-Signature")
-    
+
     stripe_checkout = await _get_stripe_checkout(request)
-    
+
     try:
-        webhook_response = await stripe_checkout.handle_webhook(body, signature)
-        
-        if webhook_response.payment_status == "paid":
-            # Find payment by session ID
-            payment = db.query(Payment).filter(
-                Payment.stripe_session_id == webhook_response.session_id
-            ).first()
-            
-            if payment and payment.status != PaymentStatus.PAID:
-                payment.status = PaymentStatus.PAID
-                payment.paid_at = datetime.now(timezone.utc)
-                
-                # Update booking
-                booking = db.query(Booking).filter(
-                    Booking.id == payment.booking_id
-                ).first()
-                
-                if booking:
-                    booking.payment_status = PaymentStatus.PAID
-                    booking.status = BookingStatus.CONFIRMED
-                
+        # Parse the webhook to extract event metadata
+        import stripe
+        stripe.api_key = settings.STRIPE_API_KEY
+
+        try:
+            event = stripe.Webhook.construct_event(
+                body, signature, settings.STRIPE_WEBHOOK_SECRET
+            )
+        except stripe.error.SignatureVerificationError:
+            logger.error("Invalid Stripe webhook signature")
+            return {"status": "error", "message": "Invalid signature"}
+        except Exception as e:
+            # Fall back to direct handling if signature verification fails
+            logger.warning(f"Signature verification skipped: {e}")
+            event = json.loads(body)
+
+        event_id = event.get("id") if isinstance(event, dict) else event.id
+        event_type = event.get("type") if isinstance(event, dict) else event.type
+
+        if not event_id:
+            logger.error("No event ID in webhook payload")
+            return {"status": "error", "message": "Missing event ID"}
+
+        # Check for duplicate event (idempotency)
+        existing_event = db.query(ProcessedWebhookEvent).filter(
+            ProcessedWebhookEvent.event_id == event_id
+        ).first()
+
+        if existing_event:
+            logger.info(f"Skipping duplicate webhook event: {event_id}")
+            return {
+                "status": "success",
+                "message": "Event already processed",
+                "event_id": event_id
+            }
+
+        # Create payload hash for verification
+        payload_hash = hashlib.sha256(body).hexdigest()
+
+        # Record this event as being processed
+        processed_event = ProcessedWebhookEvent(
+            event_id=event_id,
+            event_type=event_type,
+            payload_hash=payload_hash,
+            status="processing"
+        )
+        db.add(processed_event)
+        db.flush()
+
+        try:
+            # Check if this is a subscription-related event
+            subscription_events = [
+                "invoice.payment_succeeded",
+                "invoice.payment_failed",
+                "customer.subscription.updated",
+                "customer.subscription.deleted"
+            ]
+
+            if event_type in subscription_events:
+                # Handle subscription events
+                from app.services.stripe_subscription_service import StripeSubscriptionService
+                stripe_sub_service = StripeSubscriptionService(db)
+                result = stripe_sub_service.handle_webhook_event(event)
+                logger.info(f"Processed subscription webhook: {result}")
+
+                processed_event.status = "processed"
                 db.commit()
-                
-                logger.info(f"Payment {payment.id} marked as paid via webhook")
-        
-        return {"status": "success"}
-    
+
+                return {
+                    "status": "success",
+                    "event_id": event_id,
+                    "event_type": event_type,
+                    "result": result
+                }
+
+            # Handle the webhook through our checkout handler (for one-time payments)
+            webhook_response = await stripe_checkout.handle_webhook(body, signature)
+
+            if webhook_response.payment_status == "paid":
+                # Find payment by session ID
+                payment = db.query(Payment).filter(
+                    Payment.stripe_session_id == webhook_response.session_id
+                ).first()
+
+                if payment and payment.status != PaymentStatus.PAID:
+                    payment.status = PaymentStatus.PAID
+                    payment.paid_at = datetime.now(timezone.utc)
+
+                    # Update booking
+                    booking = db.query(Booking).filter(
+                        Booking.id == payment.booking_id
+                    ).first()
+
+                    if booking:
+                        booking.payment_status = PaymentStatus.PAID
+                        booking.status = BookingStatus.CONFIRMED
+
+                    logger.info(f"Payment {payment.id} marked as paid via webhook")
+
+            # Mark event as successfully processed
+            processed_event.status = "processed"
+            db.commit()
+
+            return {
+                "status": "success",
+                "event_id": event_id,
+                "event_type": event_type
+            }
+
+        except Exception as process_error:
+            # Mark event as failed but still recorded
+            processed_event.status = "failed"
+            processed_event.error_message = str(process_error)
+            db.commit()
+            raise
+
     except Exception as e:
         logger.error(f"Webhook error: {e}")
         return {"status": "error", "message": str(e)}

@@ -111,11 +111,11 @@ class UserListResponse(BaseModel):
 
 class AddressBase(BaseModel):
     label: str = "Home"
-    street_address: str = Field(..., min_length=5, max_length=255)
+    street_address: str = Field(..., min_length=1, max_length=255)
     apartment: Optional[str] = None
-    city: str = Field(..., min_length=2, max_length=100)
+    city: str = Field(..., min_length=1, max_length=100)
     state: Optional[str] = None
-    postal_code: str = Field(..., min_length=3, max_length=20)
+    postal_code: str = Field(..., min_length=1, max_length=20)
     country: str = "USA"
     property_type: Optional[str] = None
     property_size_sqft: Optional[int] = None

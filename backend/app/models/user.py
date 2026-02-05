@@ -41,7 +41,10 @@ class User(Base):
     # Password reset
     password_reset_token = Column(String(100), nullable=True)
     password_reset_expires = Column(DateTime(timezone=True), nullable=True)
-    
+
+    # Stripe integration
+    stripe_customer_id = Column(String(100), nullable=True, index=True)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -53,6 +56,7 @@ class User(Base):
     assigned_bookings = relationship("Booking", back_populates="cleaner", foreign_keys="Booking.cleaner_id")
     reviews = relationship("Review", back_populates="customer", foreign_keys="Review.customer_id")
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
+    cleaner_profile = relationship("CleanerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     
     @property
     def full_name(self) -> str:

@@ -29,7 +29,7 @@ const iconMap = {
 const ServicesPage = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState('all');
+
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -45,16 +45,8 @@ const ServicesPage = () => {
     fetchServices();
   }, []);
 
-  const categories = [
-    { id: 'all', name: 'All Services' },
-    { id: 'residential', name: 'Residential' },
-    { id: 'commercial', name: 'Commercial' },
-    { id: 'specialty', name: 'Specialty' },
-  ];
 
-  const filteredServices = activeCategory === 'all'
-    ? services
-    : services.filter(s => s.category === activeCategory);
+  const filteredServices = services;
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -73,26 +65,7 @@ const ServicesPage = () => {
         </div>
       </section>
 
-      {/* Category Filter */}
-      <section className="py-8 bg-white border-b border-stone-200 sticky top-16 z-40">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex flex-wrap justify-center gap-3">
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`px-6 py-2.5 rounded-full font-medium transition-all ${activeCategory === cat.id
-                    ? 'bg-green-900 text-white'
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                  }`}
-                data-testid={`filter-${cat.id}`}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
+
 
       {/* Services Grid */}
       <section className="py-20">
@@ -143,22 +116,32 @@ const ServicesPage = () => {
                       ))}
                     </div>
 
-                    <div className="flex items-end justify-between pt-6 border-t border-stone-100">
-                      <div>
-                        <p className="text-sm text-stone-500">Starting from</p>
-                        <p className="font-heading text-3xl font-bold text-lime-600">
-                          ${service.base_price}
-                        </p>
+                    <div className="flex items-center justify-between pt-4 border-t border-stone-100 relative overflow-hidden">
+                      {/* Default View */}
+                      <div className="group-hover:translate-y-16 transition-transform duration-300 w-full flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-stone-500">Starting from</p>
+                          <p className="text-xl font-bold text-emerald-600">
+                            ${service.base_price}
+                          </p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center">
+                          <ArrowRight className="w-5 h-5 text-stone-400 group-hover:text-emerald-500 transition-colors" />
+                        </div>
                       </div>
-                      <Link to={`/booking?service=${service.id}`}>
-                        <Button
-                          className="bg-green-900 hover:bg-green-800 text-white rounded-full"
-                          data-testid={`book-${service.id}`}
-                        >
-                          Book Now
-                          <ArrowRight className="w-4 h-4 ml-2" />
-                        </Button>
-                      </Link>
+
+                      {/* Hover View: Add Button */}
+                      <div className="absolute inset-x-0 bottom-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out bg-white pt-4">
+                        <Link to={`/booking?service=${service.id}`}>
+                          <Button
+                            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl h-11 shadow-lg shadow-emerald-100"
+                            data-testid={`book-${service.id}`}
+                          >
+                            Book Service
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 );

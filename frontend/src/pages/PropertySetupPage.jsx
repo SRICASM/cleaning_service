@@ -72,15 +72,17 @@ const PropertySetupPage = () => {
             <div className="max-w-xl w-full">
                 {/* Header */}
                 <div className="text-center mb-10">
-                    <div className="w-16 h-16 rounded-2xl bg-green-900 flex items-center justify-center mx-auto mb-6">
-                        <Sparkles className="w-8 h-8 text-lime-400" />
+                    <div className="bg-white rounded-3xl shadow-xl overflow-hidden p-8">
+                        <div className="w-16 h-16 rounded-2xl bg-green-950 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-900/20">
+                            <Home className="w-8 h-8 text-lime-400" />
+                        </div>
+                        <h1 className="font-heading text-3xl font-bold text-green-900 mb-2">
+                            Welcome, {user?.name?.split(' ')[0]}! 👋
+                        </h1>
+                        <p className="text-stone-600">
+                            Tell us about your property so we can provide accurate quotes.
+                        </p>
                     </div>
-                    <h1 className="font-heading text-3xl font-bold text-green-900 mb-2">
-                        Welcome, {user?.name?.split(' ')[0]}! 👋
-                    </h1>
-                    <p className="text-stone-600">
-                        Tell us about your property so we can provide accurate quotes.
-                    </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-stone-200 p-8">
@@ -165,7 +167,7 @@ const PropertySetupPage = () => {
                     <Button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-green-900 hover:bg-green-800 text-white rounded-full h-12"
+                        className="w-full bg-green-950 hover:bg-green-900 text-white rounded-xl h-12 shadow-md"
                     >
                         {loading ? 'Saving...' : 'Continue to Dashboard'}
                         <ArrowRight className="w-4 h-4 ml-2" />

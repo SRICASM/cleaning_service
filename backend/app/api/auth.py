@@ -60,6 +60,7 @@ async def get_me(
         "name": f"{current_user.first_name} {current_user.last_name}".strip(),
         "phone": current_user.phone,
         "role": current_user.role.value,
+        "user_type": "CUSTOMER",  # Regular users are customers
         "addresses": addresses_list,
         "default_address": default_address,
         "property_type": default_address.get("property_type") if default_address else None,
